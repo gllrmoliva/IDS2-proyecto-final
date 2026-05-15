@@ -1,0 +1,24 @@
+[project]
+name = "panopdes_backend"
+version = "0.1.0"
+description = "Backend del sistema panopdes"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "fastapi[standard]==0.136.1",
+]
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "pytest>=9.0.3",
+]
+
+[tool.fastapi]
+entrypoint = "app.main:app"
+
+[tool.pytest.ini_options]
+pythonpath = [
+  "."
+]
+
