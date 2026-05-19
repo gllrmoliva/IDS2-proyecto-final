@@ -1,8 +1,15 @@
-.venv/
+.git
+.gitignore
+
+.venv
+venv
+env/
+
 __pycache__/
-*.pyc
-*.pyo
-.git/
-.env
-tests/
+*.py[cod]
+*$py.class
 .pytest_cache/
+
+.env
+
+# tests/ # por ahora mantener
