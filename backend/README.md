@@ -8,12 +8,16 @@ uv sync
 2. **Configuración de variables de entorno**
 Es necesario contar con un archivo `.env` en la raíz del proyecto. A continuación se muestra un ejemplo:
 ```
-   PROJECT_NAME="PANOPTES"
-   DATABASE_URL="ejemplo@localhost:8080/db"
+    PROJECT_NAME="PANOPTES"
 
-   SECRET_KEY="CAROLINCACAOLEOLAO"
-   ALGORITHM="HS256"
-   ACCESS_TOKEN_EXPIRE_MINUTES=60
+    POSTGRES_USER=postgres
+    POSTGRES_PASSWORD=postgresnosGustaMucho
+    POSTGRES_DB=casos_db
+    DATABASE_URL=postgresql://postgres:postgresnosGustaMucho@db:5432/casos_db
+
+    SECRET_KEY="CAROLINCACAOLEOLAO"
+    ALGORITHM="HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES=60
 ```
 
 ### Ejecución
