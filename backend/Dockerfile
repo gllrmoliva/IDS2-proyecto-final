@@ -11,6 +11,7 @@ COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-install-project
 
 COPY ./app ./app
+COPY ./db ./db
 
 RUN uv sync --frozen
 
