@@ -43,7 +43,13 @@ Los servicios estarán disponibles en:
 
 
 ### Ejecución
-Para iniciar el servidor backend en modo desarrollador (localhost), utiliza el siguiente comando:
+Para iniciar el servidor backend en modo desarrollador (localhost),asegúrate de tener Docker corriendo para la base de datos y MinIO, luego cambia `MINIO_ENDPOINT` y `DATABASE_URL` en el `.env` a `localhost`:
+```
+MINIO_ENDPOINT=localhost:9000
+DATABASE_URL=postgresql://postgres:postgresnosGustaMucho@localhost:5432/casos_db
+```
+
+Luego ejecuta:
 ```
 uv run fastapi dev
 ```
@@ -52,6 +58,12 @@ Para ejecutar tests, utiliza el siguiente comando:
 ```
 uv run pytest
 ```
+
+para el test MinIO usa el siguiente comando:
+```
+uv run pytest backend/MinIO/test_usuarios.py -v
+```
+
 
 ## Estructura del Proyecto
 A continuación se detalla la arquitectura de carpetas del proyecto y la responsabilidad de cada archivo y directorio:
