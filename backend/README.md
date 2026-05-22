@@ -10,18 +10,46 @@ Es necesario contar con un archivo `.env` en la raíz del proyecto. A continuaci
 ```
     PROJECT_NAME="PANOPTES"
 
-    POSTGRES_USER=postgres
-    POSTGRES_PASSWORD=postgresnosGustaMucho
-    POSTGRES_DB=casos_db
-    DATABASE_URL=postgresql://postgres:postgresnosGustaMucho@db:5432/casos_db
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=postgresnosGustaMucho
+POSTGRES_DB=casos_db
+DATABASE_URL=postgresql://postgres:postgresnosGustaMucho@db:5432/casos_db
 
-    SECRET_KEY="CAROLINCACAOLEOLAO"
-    ALGORITHM="HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES=60
+SECRET_KEY="CAROLINCACAOLEOLAO"
+ALGORITHM="HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES=60
+
+MINIO_ENDPOINT=minio:9000
+MINIO_ROOT_USER=Panoptes
+MINIO_ROOT_PASSWORD=3AtVHp0%^n1l
 ```
 
+### Ejecución con Docker (recomendado)
+Para levantar todos los servicios (backend, base de datos y almacenamiento de evidencias) desde la raíz del proyecto:
+```
+docker compose up -d
+```
+
+Para detener todos los servicios:
+```
+docker compose down
+```
+
+Los servicios estarán disponibles en:
+- **Backend API:** http://localhost:8000
+- **Frontend:** http://localhost:5173
+- **MinIO consola:** http://localhost:9001
+
+
+
 ### Ejecución
-Para iniciar el servidor backend en modo desarrollador (localhost), utiliza el siguiente comando:
+Para iniciar el servidor backend en modo desarrollador (localhost),asegúrate de tener Docker corriendo para la base de datos y MinIO, luego cambia `MINIO_ENDPOINT` y `DATABASE_URL` en el `.env` a `localhost`:
+```
+MINIO_ENDPOINT=localhost:9000
+DATABASE_URL=postgresql://postgres:postgresnosGustaMucho@localhost:5432/casos_db
+```
+
+Luego ejecuta:
 ```
 uv run fastapi dev
 ```
@@ -30,6 +58,12 @@ Para ejecutar tests, utiliza el siguiente comando:
 ```
 uv run pytest
 ```
+
+para el test MinIO usa el siguiente comando:
+```
+uv run pytest backend/MinIO/test_usuarios.py -v
+```
+
 
 ## Estructura del Proyecto
 A continuación se detalla la arquitectura de carpetas del proyecto y la responsabilidad de cada archivo y directorio:

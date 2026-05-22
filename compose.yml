@@ -10,9 +10,12 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      minio:
+        condition: service_started
     volumes:
       - ./backend/app:/backend/app
       - ./backend/db:/backend/db
+
   db:
     image: postgres:16-alpine
     container_name: panoptes_db
@@ -24,11 +27,64 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./backend/db/migrations:/docker-entrypoint-initdb.d
     healthcheck:
-      # Verifica que la base de datos está aceptando conexiones antes de que inicialize API
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
       timeout: 5s
       retries: 5
+
+  minio:
+    image: quay.io/minio/aistor/minio
+    container_name: panoptes_minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio-data:/data
+    environment:
+      MINIO_ROOT_USER: Panoptes
+      MINIO_ROOT_PASSWORD: "3AtVHp0%^n1l"
+      MINIO_LICENSE: "eyJhbGciOiJFUzM4NCIsInR5cCI6IkpXVCJ9.eyJhaWQiOjAsImNhcCI6MCwiaWF0IjoxLjc3ODE4OTY2MDUzOTE3MDY1ZTksImlzcyI6InN1Ym5ldEBtaW4uaW8iLCJsaWQiOiJhOTkwM2VlYS02NjEzLTRlYTQtYmQ3ZC03ZTgxOWJkNmQ0MGEiLCJvcmciOiIiLCJwbGFuIjoiRlJFRSIsInN1YiI6ImpvYXF1aW5hcnJpYWdhZGFiZWx0cmFuQGdtYWlsLmNvbSIsInRyaWFsIjpmYWxzZX0.jYVZq6NPY2UL646L1UW1tznBoulO4PGj3UaENUuGFWbPL8yLhgWH6nmvGLPyDu_SKEXAwll3JLtTSsjyH9AeUnh_Vl1eyJDFbNUqcZfaQ0QXw07bclCqEP3t4Rv6lqcF"
+    command: server /data --console-address ":9001"
+
+  minio-init:
+    image: quay.io/minio/mc
+    container_name: panoptes_minio_init
+    depends_on:
+      - minio
+    volumes:
+      - ./minio-init:/policies
+    entrypoint: >
+      /bin/sh -c "
+      sleep 5;
+      mc alias set local http://minio:9000 Panoptes '3AtVHp0%^n1l';
+
+      mc mb --ignore-existing local/evidencias;
+      mc mb --ignore-existing local/documentos;
+
+      mc admin policy create local politica-coordinador /policies/politica-coordinador.json;
+      mc admin policy create local politica-productor /policies/politica-productor.json;
+      mc admin policy create local politica-profesor /policies/politica-profesor.json;
+      mc admin policy create local politica-profesor-jefe /policies/politica-profesor-jefe.json;
+
+      mc admin user add local coordinador coordinador123;
+      mc admin user add local productor productor123;
+      mc admin user add local profesor profesor123;
+      mc admin user add local profesorjefe profesorjefe123;
+
+      mc admin policy attach local politica-coordinador --user coordinador;
+      mc admin policy attach local politica-productor --user productor;
+      mc admin policy attach local politica-profesor --user profesor;
+      mc admin policy attach local politica-profesor-jefe --user profesorjefe;
+
+      mc admin accesskey create local coordinador --access-key panoptes-coord-key --secret-key panoptes-coord-secret;
+      mc admin accesskey create local productor --access-key panoptes-prod-key --secret-key panoptes-prod-secret;
+      mc admin accesskey create local profesor --access-key panoptes-prof-key --secret-key panoptes-prof-secret;
+      mc admin accesskey create local profesorjefe --access-key panoptes-jefe-key --secret-key panoptes-jefe-secret;
+
+      echo 'MinIO inicializado correctamente';
+      exit 0;
+      "
+
   frontend:
     build: ./frontend
     container_name: panoptes_frontend
@@ -36,10 +92,10 @@ services:
       - "5173:5173"
     volumes:
       - ./frontend:/frontend
-      - /frontend/node_modules  # esto para instalación de npm
+      - /frontend/node_modules
     depends_on:
       - api
-      
+
 volumes:
   postgres_data:
-
+  minio-data:
