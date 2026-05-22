@@ -66,6 +66,7 @@ CREATE TABLE "Incidente" (
   "id_productor" varchar NOT NULL,
   "gravedad" gravedad,
   "desc" text NOT NULL,
+  "fecha" date NOT NULL,
   "id_caso" integer,
   "id_hito" integer,
   CONSTRAINT "mutualmente_exclusivo" CHECK (id_caso IS NULL OR id_hito IS NULL)

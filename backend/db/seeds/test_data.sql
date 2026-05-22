@@ -48,11 +48,11 @@ INSERT INTO "Hito" ("id_hito", "id_caso", "desc", "fecha") VALUES
 (3, 2, 'Cierre del caso con carta de compromiso.', '2026-04-15');
 
 -- Incidentes (Testing de XOR constraint)
-INSERT INTO "Incidente" ("id_incidente", "id_productor", "gravedad", "desc", "id_caso", "id_hito") VALUES
-(1, '22222222-2', 'baja', 'Pelea menor en el patio durante el recreo.', 1, NULL),            -- Asociado a Caso
-(2, '33333333-3', 'media', 'Falta de respeto grave a la profesora durante clase.', NULL, 1), -- Asociado a Hito
-(3, '22222222-2', 'alta', 'Alumno rompió el ventanal con un balón.', 2, NULL),               -- Asociado a Caso
-(4, '22222222-2', 'alta', 'Alumno empujó a su compañero del quinto piso.', NULL, NULL);      -- No elevado
+INSERT INTO "Incidente" ("id_incidente", "id_productor", "gravedad", "desc", "id_caso", "id_hito", "fecha") VALUES
+(1, '22222222-2', 'baja', 'Pelea menor en el patio durante el recreo.', 1, NULL, '2025-05-10'),            -- Asociado a Caso
+(2, '33333333-3', 'media', 'Falta de respeto grave a la profesora durante clase.', NULL, 1, '2025-05-10'), -- Asociado a Hito
+(3, '22222222-2', 'alta', 'Alumno rompió el ventanal con un balón.', 2, NULL, '2025-05-10'),               -- Asociado a Caso
+(4, '22222222-2', 'alta', 'Alumno empujó a su compañero del quinto piso.', NULL, NULL, '2025-05-10');      -- No elevado
 
 -- Documentos (Simulating MinIO metadata)
 INSERT INTO "Documento" ("id_doc", "bucket_name", "object_key", "nombre_original", "mime_type", "size_bytes", "descripcion", "id_hito", "id_incidente") VALUES
