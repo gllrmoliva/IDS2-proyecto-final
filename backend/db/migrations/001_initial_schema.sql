@@ -77,7 +77,7 @@ CREATE TABLE "Incidente" (
   "id_caso" integer UNIQUE,
   "id_hito" integer UNIQUE,
   "estado" estado_incidente NOT NULL,
-  "motivo_rechazo" varchar,
+  "motivo_rechazo" text,
   CONSTRAINT "mutualmente_exclusivo" CHECK (id_caso IS NULL OR id_hito IS NULL),
   CONSTRAINT "estado_incidente_1"
   CHECK (estado = 'aceptado'::estado_incidente OR (id_caso is NULL AND id_hito is NULL)),
