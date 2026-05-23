@@ -7,6 +7,7 @@
 //   - Modal de detalle con acciones aprobar/rechazar
 
 import { useState, useMemo } from "react";
+import { Link } from "react-router-dom";
 import { useIncidents } from "../../hooks/useIncidents";
 import { IncidentFilters } from "./IncidentFilters";
 import { INITIAL_FILTERS } from "../../data/mockIncidents";
@@ -94,12 +95,20 @@ export function IncidentMonitorView() {
           </h1>
           <p className="text-sm text-gray-500 mt-0.5">Vista de coordinador — Colegio San Penquista</p>
         </div>
-        <button
-          onClick={reload}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl border-2 border-blue-200 text-blue-700 font-semibold text-sm hover:bg-blue-50 transition-colors"
-        >
-         Actualizar
-        </button>
+        <div className="flex gap-3">
+          <Link
+            to="/report"
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-900 text-white font-semibold text-sm hover:bg-blue-800 transition-colors"
+          >
+            ＋ Nuevo incidente
+          </Link>
+          <button
+            onClick={reload}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl border-2 border-blue-200 text-blue-700 font-semibold text-sm hover:bg-blue-50 transition-colors"
+          >
+            Actualizar
+          </button>
+        </div>
       </div>
 
       {/* Stats */}
