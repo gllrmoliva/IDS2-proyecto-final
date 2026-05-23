@@ -4,6 +4,13 @@ CREATE TYPE "estado_caso" AS ENUM (
   'cerrado'
 );
 
+CREATE TYPE "estado_incidente" AS ENUM (
+  'aceptado',
+  'pendiente',
+  'rechazado'
+);
+
+
 CREATE TYPE "gravedad" AS ENUM (
   'baja',
   'media',
@@ -64,11 +71,21 @@ CREATE TABLE "Hito" (
 CREATE TABLE "Incidente" (
   "id_incidente" integer PRIMARY KEY,
   "id_productor" varchar NOT NULL,
-  "gravedad" gravedad,
+  "gravedad" gravedad NOT NULL,
   "desc" text NOT NULL,
-  "id_caso" integer,
-  "id_hito" integer,
-  CONSTRAINT "mutualmente_exclusivo" CHECK (id_caso IS NULL OR id_hito IS NULL)
+  "id_caso" integer UNIQUE,
+  "id_hito" integer UNIQUE,
+  "estado" estado_incidente NOT NULL,
+  "motivo_rechazo" varchar,
+  CONSTRAINT "mutualmente_exclusivo" CHECK (id_caso IS NULL OR id_hito IS NULL),
+  CONSTRAINT "estado_incidente_1"
+  CHECK (estado = 'aceptado'::estado_incidente OR (id_caso is NULL AND id_hito is NULL)),
+  CONSTRAINT "estado_incidente_2"
+  CHECK (estado != 'aceptado'::estado_incidente OR (id_caso is not NULL OR id_hito is not NULL)),
+  CONSTRAINT "motivo_rechazo_1"
+  CHECK (estado = 'rechazado'::estado_incidente OR motivo_rechazo is NULL),
+  CONSTRAINT "motivo_rechazo_2"
+  CHECK (estado != 'rechazado'::estado_incidente OR motivo_rechazo is not NULL)
 );
 
 CREATE TABLE "Documento" (
