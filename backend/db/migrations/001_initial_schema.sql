@@ -66,6 +66,7 @@ CREATE TABLE "Incidente" (
   "id_productor" varchar NOT NULL,
   "gravedad" gravedad,
   "desc" text NOT NULL,
+  "fecha" date NOT NULL,
   "id_caso" integer,
   "id_hito" integer,
   CONSTRAINT "mutualmente_exclusivo" CHECK (id_caso IS NULL OR id_hito IS NULL)
@@ -101,7 +102,7 @@ CREATE TABLE "Estudiante_Hito" (
   PRIMARY KEY ("id_estudiante", "id_hito")
 );
 
-COMMENT ON COLUMN "Documento"."bucket_name" IS 'Ej: ''casos-docs'', ''incidentes-docs''';
+COMMENT ON COLUMN "Documento"."bucket_name" IS 'Ej: ''evidencias'', ''documentos''';
 COMMENT ON COLUMN "Documento"."object_key" IS 'El UUID o path en MinIO, ej: ''2026/05/uuid.pdf''';
 COMMENT ON COLUMN "Documento"."nombre_original" IS 'Ej: ''informe_final.docx''';
 COMMENT ON COLUMN "Documento"."mime_type" IS 'Ej: ''application/pdf''';
