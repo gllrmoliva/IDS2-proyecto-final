@@ -27,7 +27,7 @@ function getFechaLimite(periodo) {
 }
 
 export function IncidentMonitorView() {
-  const { incidents, loading, error, reload, updateLocal } = useIncidents();
+  const { incidents, loading, error, reload, handleAprobar, handleRechazar, handleRevertir } = useIncidents();
   const [filters, setFilters]   = useState(INITIAL_FILTERS);
   const [selected, setSelected] = useState(null); 
   
@@ -64,6 +64,9 @@ export function IncidentMonitorView() {
         : true;
 
       return matchSearch && matchEstado && matchGravedad && matchCurso && matchFecha;
+    }).sort((a, b) => {
+      const orden = { pendiente: 0, aprobado: 1, rechazado: 2 };
+      return (orden[a.estado] ?? 9) - (orden[b.estado] ?? 9);
     });
   }, [incidents, filters]);
 
@@ -76,9 +79,7 @@ export function IncidentMonitorView() {
   }), [incidents]);
 
  
-  const handleAprobar  = (id) => updateLocal(id, { estado: "aprobado" });
-  const handleRechazar = (id) => updateLocal(id, { estado: "rechazado" });
-  const handleRevertir = (id) => updateLocal(id, { estado: "pendiente" }); // revierte si cierra sin guardar
+  // handleAprobar, handleRechazar y handleRevertir vienen de useIncidents
 
   // Estados de carga y error
   if (loading) return <LoadingState />;
