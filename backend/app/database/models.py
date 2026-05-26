@@ -290,13 +290,14 @@ class Incidente(Base):
 
     estudiantes: Mapped[List["Estudiante"]] = relationship(secondary=estudiante_incidente,
                                                            back_populates="incidentes")
+    documentos: Mapped[List["Documento"]] = relationship()
 
 
 class Documento(Base):
     __tablename__ = "Documento"
 
     id_doc: Mapped[int] = mapped_column(Integer, primary_key=True)
-    bucket_name: Mapped[str] = mapped_column(String, nullable=False, comment="Ej: 'casos-docs', 'incidentes-docs'")
+    bucket_name: Mapped[str] = mapped_column(String, nullable=False, comment="Ej: 'evidencias', 'documentos'")
     object_key: Mapped[str] = mapped_column(String, unique=True, nullable=False, comment="El UUID o path en MinIO, ej: '2026/05/uuid.pdf'")
     nombre_original: Mapped[str] = mapped_column(String, nullable=False, comment="Ej: 'informe_final.docx'")
     mime_type: Mapped[str] = mapped_column(String, nullable=False, comment="Ej: 'application/pdf'")
