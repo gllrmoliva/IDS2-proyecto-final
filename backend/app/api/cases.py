@@ -81,6 +81,8 @@ async def get_all_incidents(db: AsyncSession = Depends(get_db)):
                 "id_productor": incidente.id_productor,
                 "id_caso": incidente.id_caso,
                 "id_hito": incidente.id_hito,
+                "estado": incidente.estado,
+                "motivo_rechazo": incidente.motivo_rechazo,
                 
                 "productor": usuario,
                 "estado_caso": caso.estado if caso else None,

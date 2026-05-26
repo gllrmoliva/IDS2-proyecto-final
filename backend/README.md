@@ -8,7 +8,7 @@ uv sync
 2. **Configuración de variables de entorno**
 Es necesario contar con un archivo `.env` en la raíz del proyecto. A continuación se muestra un ejemplo:
 ```
-    PROJECT_NAME="PANOPTES"
+PROJECT_NAME="PANOPTES"
 
 POSTGRES_USER=postgres
 POSTGRES_PASSWORD=postgresnosGustaMucho
