@@ -5,8 +5,8 @@ import { formatFecha } from "../../utils/dateUtils";
 import { Section, DataRow, FormGroup } from "../shared/UIHelpers";
 
 // CasoBuscador 
-// Debe estar definido ANTES de ser usado en el JSX.
-// TODO: reemplazar MOCK_CASOS por fetch("/api/operate/cases/get_all")
+// Debe estar definido antes de ser usado en el JSX.
+// reemplazar MOCK_CASOS por fetch("/api/operate/cases/get_all")
 
 const MOCK_CASOS = [
   { id: "CASO-001", alumno: "Valentina Rojas Soto", curso: "3°A", tipo: "Conducta agresiva reiterada" },
@@ -162,16 +162,16 @@ export function IncidentDetailModal({ incident, onClose, onAprobar, onRechazar, 
                 <EstadoBadge estado={incident.estado} />
                 <GravedadBadge gravedad={incident.gravedad} />
               </div>
-              <Section title="👤 Alumno">
+              <Section title="Alumno">
                 <DataRow label="Nombre" value={incident.alumno.nombre} />
                 <DataRow label="Curso"  value={incident.alumno.curso} />
                 <DataRow label="RUT"    value={incident.alumno.rut} />
               </Section>
-              <Section title="📝 Descripción">
+              <Section title="Descripción de lo ocurrido">
                 <p className="text-sm text-gray-600 leading-relaxed">{incident.descripcion}</p>
               </Section>
               {incident.involucrados?.length > 0 && (
-                <Section title="👥 Involucrados">
+                <Section title="Involucrados">
                   <ul className="flex flex-col gap-2">
                     {incident.involucrados.map((inv, i) => (
                       <li key={i} className="flex items-center gap-3 text-sm">
@@ -185,7 +185,7 @@ export function IncidentDetailModal({ incident, onClose, onAprobar, onRechazar, 
                   </ul>
                 </Section>
               )}
-              <Section title="ℹ️ Información del reporte">
+              <Section title="ℹInformación del reporte">
                 <DataRow label="Fecha"         value={formatFecha(incident.fecha)} />
                 <DataRow label="Reportado por" value={`${incident.reportadoPor} (${incident.rolReportante})`} />
                 <DataRow label="Evidencia"     value={incident.evidencia ?? "Sin evidencia adjunta"} />
@@ -226,7 +226,7 @@ export function IncidentDetailModal({ incident, onClose, onAprobar, onRechazar, 
                   />
                   {razonError && (
                     <p style={{ fontSize: "12px", color: "#ef4444", marginTop: "6px" }}>
-                      ⚠️ Debes ingresar un motivo para rechazar el incidente.
+                      Debes ingresar un motivo para rechazar el incidente.
                     </p>
                   )}
                   <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end", marginTop: "20px" }}>
@@ -240,7 +240,7 @@ export function IncidentDetailModal({ incident, onClose, onAprobar, onRechazar, 
                       onClick={handleConfirmarRechazo}
                       className="px-5 py-2.5 rounded-xl bg-red-600 text-white font-bold text-sm hover:bg-red-700 transition-colors"
                     >
-                      ✗ Confirmar rechazo
+                      Confirmar rechazo
                     </button>
                   </div>
                 </div>
@@ -254,11 +254,11 @@ export function IncidentDetailModal({ incident, onClose, onAprobar, onRechazar, 
                     <>
                       <button onClick={handleRechazarClick}
                         className="px-5 py-2.5 rounded-xl border-2 border-red-600 text-red-600 font-bold text-sm hover:bg-red-50 transition-colors">
-                        ✗ Rechazar
+                        Rechazar
                       </button>
                       <button onClick={handleAprobarClick}
                         className="px-5 py-2.5 rounded-xl bg-green-700 text-white font-bold text-sm hover:bg-green-800 transition-colors shadow">
-                        ✅ Aprobar incidente
+                        Aprobar incidente
                       </button>
                     </>
                   ) : (
@@ -269,7 +269,7 @@ export function IncidentDetailModal({ incident, onClose, onAprobar, onRechazar, 
                       </button>
                       <button onClick={handleConfirmarRechazo}
                         className="px-5 py-2.5 rounded-xl bg-red-600 text-white font-bold text-sm hover:bg-red-700 transition-colors">
-                        ✗ Confirmar rechazo
+                        Confirmar rechazo
                       </button>
                     </>
                   )}
@@ -286,7 +286,7 @@ export function IncidentDetailModal({ incident, onClose, onAprobar, onRechazar, 
                       }}>
                         {incident.estado === "aprobado"
                           ? "Incidente aprobado."
-                          : `Incidente rechazado — ${incident.razonRechazo ?? "sin motivo registrado"}`
+                          : `Incidente rechazado ${incident.razonRechazo ?? "sin motivo registrado"}`
                         }
                       </div>
                       <div className="flex gap-3 justify-end">
@@ -331,7 +331,7 @@ export function IncidentDetailModal({ incident, onClose, onAprobar, onRechazar, 
           <>
             <div className="flex items-center justify-between p-6 border-b-2 border-yellow-500">
               <div>
-                <p className="text-xs font-bold text-green-700 tracking-widest uppercase mb-1">✅ Incidente aprobado</p>
+                <p className="text-xs font-bold text-green-700 tracking-widest uppercase mb-1">Incidente aprobado</p>
                 <h2 className="text-xl font-bold text-blue-900">¿Qué deseas crear?</h2>
               </div>
               <button onClick={handleCerrarSinGuardar}
@@ -345,7 +345,9 @@ export function IncidentDetailModal({ incident, onClose, onAprobar, onRechazar, 
                   style={{ border: "2px solid #bfdbfe", borderRadius: "14px", padding: "24px 16px", background: "#eff6ff", cursor: "pointer", textAlign: "center", transition: "all 0.15s" }}
                   onMouseEnter={e => e.currentTarget.style.background = "#dbeafe"}
                   onMouseLeave={e => e.currentTarget.style.background = "#eff6ff"}>
-                  <div style={{ fontSize: "36px", marginBottom: "10px" }}>📁</div>
+                  <svg style={{ width: "40px", height: "40px", margin: "0 auto 10px", display: "block", color: "#1e3a7a" }} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m3.75 9v6m3-3H9m1.5-12H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                  </svg>
                   <div style={{ fontWeight: "700", color: "#1e3a7a", fontSize: "15px", marginBottom: "4px" }}>Nuevo caso</div>
                   <div style={{ fontSize: "12px", color: "#6b7280" }}>Abre un caso nuevo con este incidente como punto de partida</div>
                 </button>
@@ -353,7 +355,9 @@ export function IncidentDetailModal({ incident, onClose, onAprobar, onRechazar, 
                   style={{ border: "2px solid #bfdbfe", borderRadius: "14px", padding: "24px 16px", background: "#eff6ff", cursor: "pointer", textAlign: "center", transition: "all 0.15s" }}
                   onMouseEnter={e => e.currentTarget.style.background = "#dbeafe"}
                   onMouseLeave={e => e.currentTarget.style.background = "#eff6ff"}>
-                  <div style={{ fontSize: "36px", marginBottom: "10px" }}>📌</div>
+                  <svg style={{ width: "40px", height: "40px", margin: "0 auto 10px", display: "block", color: "#1e3a7a" }} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z" />
+                  </svg>
                   <div style={{ fontWeight: "700", color: "#1e3a7a", fontSize: "15px", marginBottom: "4px" }}>Hito en caso existente</div>
                   <div style={{ fontSize: "12px", color: "#6b7280" }}>Agrega este incidente como hito dentro de un caso ya abierto</div>
                 </button>
@@ -375,7 +379,7 @@ export function IncidentDetailModal({ incident, onClose, onAprobar, onRechazar, 
             <div className="flex items-center justify-between p-6 border-b-2 border-yellow-500">
               <div>
                 <button onClick={() => setPaso("destino")} className="text-xs text-blue-600 font-bold mb-1 hover:underline">← Volver</button>
-                <h2 className="text-xl font-bold text-blue-900">📁 Nuevo caso</h2>
+                <h2 className="text-xl font-bold text-blue-900"> Nuevo caso</h2>
               </div>
               <button onClick={handleCerrarSinGuardar}
                 className="ml-4 w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 text-lg transition-colors">✕</button>
@@ -418,7 +422,7 @@ export function IncidentDetailModal({ incident, onClose, onAprobar, onRechazar, 
               </button>
               <button onClick={() => { alert("Caso creado exitosamente.\n(Aquí se conectará al backend.)"); onClose(); }}
                 className="px-5 py-2.5 rounded-xl bg-blue-900 text-white font-bold text-sm hover:bg-blue-800 transition-colors">
-                📁 Crear caso
+                Crear caso
               </button>
             </div>
           </>
@@ -430,7 +434,7 @@ export function IncidentDetailModal({ incident, onClose, onAprobar, onRechazar, 
             <div className="flex items-center justify-between p-6 border-b-2 border-yellow-500">
               <div>
                 <button onClick={() => setPaso("destino")} className="text-xs text-blue-600 font-bold mb-1 hover:underline">← Volver</button>
-                <h2 className="text-xl font-bold text-blue-900">📌 Nuevo hito</h2>
+                <h2 className="text-xl font-bold text-blue-900"> Nuevo hito</h2>
               </div>
               <button onClick={handleCerrarSinGuardar}
                 className="ml-4 w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 text-lg transition-colors">✕</button>
@@ -491,7 +495,7 @@ function ModalHeader({ incident, onClose }) {
       </div>
       <button onClick={onClose}
         className="ml-4 w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 text-lg transition-colors">
-        ✕
+        
       </button>
     </div>
   );
