@@ -4,12 +4,12 @@
 -- ==============================================================================
 
 -- 1. IDENTIDADES (Usuario)
-INSERT INTO "Usuario" ("id_usuario", "nombre", "email", "tipo_usuario", "es_activo") VALUES
-('11111111-1', 'Ana Silva (Coordinadora)', 'ana.silva@colegio.cl', 'coordinador', true),
-('22222222-2', 'Carlos Inspector (Productor)', 'carlos.insp@colegio.cl', 'productor', true),
-('33333333-3', 'Roberto Profesor Inspector (Productor)', 'roberto.insp@colegio.cl', 'productor', true),
-('44444444-4', 'María Profesora (Profesor Jefe)', 'maria.prof@colegio.cl', 'profesor_jefe', true),
-('55555555-5', 'Usuario Eliminado', 'borrado@colegio.cl', 'productor', false);
+INSERT INTO "Usuario" ("id_usuario", "nombre", "email", "tipo_usuario", "es_activo", "hashed_password") VALUES
+('11111111-1', 'Ana Silva (Coordinadora)', 'ana.silva@colegio.cl', 'coordinador', true, '$argon2id$v=19$m=65536,t=3,p=4$v3g6v5o560tjei3d67pLsQ$vOG7SLI/xcihRYXn22f7YP0W1WbKNiEtmK9Y7b/ICcs'), --PW: testpassword
+('22222222-2', 'Carlos Inspector (Productor)', 'carlos.insp@colegio.cl', 'productor', true, '$argon2id$v=19$m=65536,t=3,p=4$BflesKr+5JiHE5V+bRbFqA$2mezGOPsMDqHO16+DSVuUB58rK2IH46fdRVozwspmwk'), --PW: testpassword1
+('33333333-3', 'Roberto Profesor Inspector (Productor)', 'roberto.insp@colegio.cl', 'productor', true, '$argon2id$v=19$m=65536,t=3,p=4$FyiE2qJzZT1ZpHoTEYJGMA$3dsMiTCWLpacLN8kjenmWs3etybelYO1Pw4m0zfm5Hk'), --PW: testpassword2
+('44444444-4', 'María Profesora (Profesor Jefe)', 'maria.prof@colegio.cl', 'profesor_jefe', true, '$argon2id$v=19$m=65536,t=3,p=4$UzwZMput7ak/9hFKEl+5Kw$XnnDqt1P9maO8I1p+EX9EuQyhs76Lta4Hou04TjoXOM'), --PW: testpassword3
+('55555555-5', 'Usuario Eliminado', 'borrado@colegio.cl', 'productor', false, '$argon2id$v=19$m=65536,t=3,p=4$K03wg1do6eLZ9TvNPIChLg$ezRhAEPXdpPd5DuCO3NQnoL5wdZzG7H5IXWmREFauRk'); --PW: nosGustaMucho
 
 -- 2. TPT SUBCLASSES (Domain Roles)
 -- Coordinador
@@ -51,7 +51,7 @@ INSERT INTO "Hito" ("id_hito", "id_caso", "desc", "fecha") VALUES
 INSERT INTO "Incidente" ("id_incidente", "id_productor", "gravedad", "desc", "id_caso", "id_hito", "estado", "motivo_rechazo", "fecha") VALUES
 (1, '22222222-2', 'baja', 'Pelea menor en el patio durante el recreo.', 1, NULL, 'aceptado', NULL, '2025-05-10'),            -- Asociado a Caso
 (2, '33333333-3', 'media', 'Falta de respeto grave a la profesora durante clase.', NULL, 1, 'aceptado', NULL, '2025-05-10'), -- Asociado a Hito
-(3, '22222222-2', 'alta', 'Alumno rompió el ventanal con un balón.', 2, NULL, 'aceptado', NULL), '2025-05-10',               -- Asociado a Caso
+(3, '22222222-2', 'alta', 'Alumno rompió el ventanal con un balón.', 2, NULL, 'aceptado', NULL, '2025-05-10'),               -- Asociado a Caso
 (4, '22222222-2', 'baja', 'Alumno empujó a su compañero del primer piso.', NULL, NULL, 'rechazado', 'Ridículo', '2025-05-10');      -- No elevado
 
 -- Documentos (Simulating MinIO metadata)

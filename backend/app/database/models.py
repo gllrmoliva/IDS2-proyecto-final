@@ -118,18 +118,20 @@ class Usuario(Base):
     email: Mapped[str] = mapped_column(String, nullable=False)
     tipo_usuario: Mapped[str] = mapped_column(String, nullable=False)
     es_activo: Mapped[bool] = mapped_column(Boolean, server_default="true")
+    hashed_password: Mapped[str] = mapped_column(String, nullable=False)
 
     __table_args__ = (
-            CheckConstraint("tipo_usuario IN ('coordinador', 'productor', 'profesor_jefe')",
-                            name="chk_tipo_usuario"
-                            ),
-            Index("unique_email_active_users",
-                  "email",
-                  unique=True,
-                  postgresql_where="es_activo = true"
-                  ),
-            )
-
+        CheckConstraint(
+            "tipo_usuario IN ('coordinador', 'productor', 'profesor_jefe')",
+            name="chk_tipo_usuario"
+        ),
+        Index(
+            "unique_email_active_users",
+            "email",
+            unique=True,
+            postgresql_where="es_activo = true"
+        ),
+    )
 
 class Coordinador(Base):
     __tablename__ = "Coordinador"

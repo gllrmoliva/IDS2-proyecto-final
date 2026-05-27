@@ -5,7 +5,7 @@ import psycopg
 DATABASE_URL = os.getenv(
     "DATABASE_URL", 
     "postgresql://postgres:postgres_password@localhost:5432/casos_db"
-)
+).replace("+asyncpg", "")
 
 SEED_FILE = Path(__file__).parent / "test_data.sql"
 
