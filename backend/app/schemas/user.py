@@ -1,10 +1,16 @@
 from pydantic import BaseModel, ConfigDict
+import enum
+
+class TipoUsuario(str, enum.Enum):
+    coordinador = "coordinador"
+    productor = "productor"
+    profesor_jefe = "profesor_jefe"
 
 class UsuarioBase(BaseModel):
     id_usuario: str
     nombre: str
     email: str
-    tipo_usuario: str
+    tipo_usuario: TipoUsuario
     es_activo: bool = True
 
 class UsuarioCreate(UsuarioBase):

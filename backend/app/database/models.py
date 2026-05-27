@@ -28,7 +28,6 @@ class Base(DeclarativeBase):
 
 class EstadoCaso(str, enum.Enum):
     abierto = "abierto"
-    en_proceso = "en proceso"
     cerrado = "cerrado"
 
 
