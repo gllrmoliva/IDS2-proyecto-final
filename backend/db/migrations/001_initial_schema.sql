@@ -23,6 +23,7 @@ CREATE TABLE "Usuario" (
   "email" varchar NOT NULL, 
   "tipo_usuario" varchar NOT NULL,
   "es_activo" boolean DEFAULT true,
+  "hashed_password" varchar NOT NULL,
   CHECK (tipo_usuario IN ('coordinador', 'productor', 'profesor_jefe'))
 );
 CREATE UNIQUE INDEX "unique_email_active_users" ON "Usuario" ("email") WHERE "es_activo" = true;
