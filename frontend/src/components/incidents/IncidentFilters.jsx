@@ -56,7 +56,7 @@ export function IncidentFilters({ filters, onChange }) {
             : "bg-white text-blue-900 border-blue-200 hover:bg-blue-50"
           }`}
       >
-        🔽 Filtros
+         Filtros
         {activeCount > 0 && (
           <span className={`text-xs font-bold rounded-full px-2 py-0.5 ${open ? "bg-white text-blue-900" : "bg-blue-900 text-white"}`}>
             {activeCount}
@@ -66,7 +66,7 @@ export function IncidentFilters({ filters, onChange }) {
 
       {open && (
         <>
-          {/* Overlay — clic fuera cierra */}
+          {/* Overlay  */}
           <div
             onClick={() => setOpen(false)}
             style={{
