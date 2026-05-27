@@ -1,19 +1,27 @@
 // useIncidents.js
 // Hook que abstrae el origen de datos de incidentes.
-//Para activar el backend real: cambiar USE_MOCK a false.
+// Para activar el backend real: cambiar USE_MOCK a false.
 
 import { useState, useEffect, useCallback } from "react";
 import { MOCK_INCIDENTS } from "../data/mockIncidents";
 
-const USE_MOCK = true;
+
+const USE_MOCK =  true;
+
+// ─── Mapeador:
+function mapEstadoBackendToFront(estado) {
+  if (estado === "aceptado") return "aprobado";
+  return estado; // "pendiente" y "rechazado" son iguales en ambos
+}
+
+ 
+function mapEstadoFrontToBackend(estado) {
+  if (estado === "aprobado") return "aceptado";
+  return estado;
+}
 
 function mapIncident(inc) {
   const primerEstudiante = inc.estudiantes?.[0];
-  const mapEstado = (estadoCaso, motivoRechazo) => {
-    if (motivoRechazo) return "rechazado";
-    if (!estadoCaso) return "pendiente";
-    return "aprobado";
-  };
 
   return {
     id:            `INC-${String(inc.id_incidente).padStart(3, "0")}`,
@@ -22,7 +30,7 @@ function mapIncident(inc) {
     tipo:          inc.desc?.split(".")[0] ?? "Incidente",
     descripcion:   inc.desc,
     gravedad:      inc.gravedad ?? "baja",
-    estado:        mapEstado(inc.estado_caso, inc.motivo_rechazo),
+    estado:        mapEstadoBackendToFront(inc.estado),
     razonRechazo:  inc.motivo_rechazo ?? null,
     reportadoPor:  inc.productor?.nombre ?? "—",
     rolReportante: inc.productor?.tipo_usuario ?? "—",
@@ -44,13 +52,16 @@ async function patchIncidentEstado(idIncidente, estado, motivoRechazo = null) {
   const res = await fetch(`/api/operate/incidents/${idIncidente}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ estado, motivo_rechazo: motivoRechazo }),
+    body: JSON.stringify({
+      estado: mapEstadoFrontToBackend(estado),
+      motivo_rechazo: motivoRechazo
+    }),
   });
   if (!res.ok) throw new Error(`Error ${res.status} al actualizar incidente`);
   return res.json();
 }
 
-//Fetch al backend 
+//Fetch  al backend 
 const fetchFromAPI = async () => {
   const res = await fetch("/api/operate/incidents/get_all");
   if (!res.ok) throw new Error(`Error ${res.status}: no se pudo cargar los incidentes`);
@@ -62,7 +73,7 @@ const fetchFromAPI = async () => {
 const fetchMock = () =>
   new Promise((resolve) => setTimeout(() => resolve(MOCK_INCIDENTS), 600));
 
-//Hook principal
+
 export function useIncidents() {
   const [incidents, setIncidents] = useState([]);
   const [loading, setLoading]     = useState(true);
@@ -84,14 +95,14 @@ export function useIncidents() {
 
   useEffect(() => { load(); }, [load]);
 
-  // Actualiza estado local y llama al backend 
+
   const updateLocal = useCallback((id, changes) => {
     setIncidents((prev) =>
       prev.map((inc) => (inc.id === id ? { ...inc, ...changes } : inc))
     );
   }, []);
 
-  // Aprobar incidente
+  
   const handleAprobar = useCallback(async (id) => {
     const inc = incidents.find(i => i.id === id);
     updateLocal(id, { estado: "aprobado" });
@@ -101,7 +112,7 @@ export function useIncidents() {
     }
   }, [incidents, updateLocal]);
 
-  // Rechazar incidente
+  // Rechazar incidente 
   const handleRechazar = useCallback(async (id, razon) => {
     const inc = incidents.find(i => i.id === id);
     updateLocal(id, { estado: "rechazado", razonRechazo: razon });

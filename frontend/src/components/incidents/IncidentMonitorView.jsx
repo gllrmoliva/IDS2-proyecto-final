@@ -142,10 +142,10 @@ export function IncidentMonitorView() {
         <IncidentTable incidents={filtered} onSelect={setSelected} />
       </div>
 
-      {/* Modal de detalle */}
+      {/* Modal de detalle — sincronizado con el estado actual del incidente */}
       {selected && (
         <IncidentDetailModal
-          incident={selected}
+          incident={incidents.find(i => i.id === selected.id) ?? selected}
           onClose={() => setSelected(null)}
           onAprobar={handleAprobar}
           onRechazar={handleRechazar}
