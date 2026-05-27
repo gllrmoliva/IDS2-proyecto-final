@@ -4,7 +4,7 @@ import { GravedadBadge, EstadoBadge } from "./IncidentBadges";
 import { formatFecha } from "../../utils/dateUtils";
 import { Section, DataRow, FormGroup } from "../shared/UIHelpers";
 
-// ─── CasoBuscador ─────────────────────────────────────────────────────────────
+// CasoBuscador 
 // Debe estar definido ANTES de ser usado en el JSX.
 // TODO: reemplazar MOCK_CASOS por fetch("/api/operate/cases/get_all")
 
@@ -104,7 +104,7 @@ function CasoBuscador() {
   );
 }
 
-// ─── Modal principal ──────────────────────────────────────────────────────────
+
 
 export function IncidentDetailModal({ incident, onClose, onAprobar, onRechazar, onRevertir }) {
   if (!incident) return null;

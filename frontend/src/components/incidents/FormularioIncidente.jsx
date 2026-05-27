@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 
-// Datos mock de estudiantes — reemplazar por fetch('/api/students') cuando el backend esté listo
+
 const MOCK_ESTUDIANTES = [
   { id_estudiante: '21.345.678-9', nombre: 'Valentina Rojas Soto',    nombre_curso: '3°A' },
   { id_estudiante: '21.456.789-0', nombre: 'Matías González Vera',    nombre_curso: '3°A' },
@@ -11,10 +11,10 @@ const MOCK_ESTUDIANTES = [
   { id_estudiante: '21.901.234-5', nombre: 'Javiera Soto Bravo',      nombre_curso: '4°D' },
 ];
 
-// Cursos disponibles para el filtro
+
 const CURSOS = ['Todos', ...new Set(MOCK_ESTUDIANTES.map(e => e.nombre_curso))];
 
-// Buscador de un estudiante individual con filtro por curso
+
 function BuscadorEstudiante({ placeholder, onSeleccionar, excluir = [] }) {
   const [query, setQuery] = useState('');
   const [curso, setCurso] = useState('Todos');
