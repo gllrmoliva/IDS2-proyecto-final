@@ -18,7 +18,7 @@ DATABASE_URL=postgresql://postgres:postgresnosGustaMucho@db:5432/casos_db
 SECRET_KEY="6917cb1b7e5116b2c0055e5a4461c035b16a80e16428a83cde1e1325c169a9f7"
 ALGORITHM="HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES=60
-## es necesario que esas sean las keys
+## Esto tiene que ir en el .env, si no estan da error
 MINIO_COORDINADOR_ACCESS_KEY = panoptes-coord-key
 MINIO_COORDINADOR_SECRET_KEY = panoptes-coord-secret
 MINIO_PRODUCTOR_ACCESS_KEY = panoptes-prod-key
@@ -33,7 +33,7 @@ MINIO_ROOT_USER=Panoptes
 MINIO_ROOT_PASSWORD=3AtVHp0%^n1l
 ```
 
-### Ejecución con Docker (recomendado)
+### Ejecución con Docker
 Para levantar todos los servicios (backend, base de datos y almacenamiento de evidencias) desde la raíz del proyecto:
 ```
 docker compose up -d
