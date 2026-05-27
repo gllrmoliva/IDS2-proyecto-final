@@ -80,3 +80,20 @@ class IncidentResponse(BaseModel):
     documentos: List[DocumentoResponse] = []
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class DocumentoCreate(BaseModel):
+    bucket_name: str
+    object_key: str
+    nombre_original: str
+    mime_type: str
+    size_bytes: int
+    descripcion: str
+
+
+class IncidenteCreate(BaseModel):
+    fecha: date
+    desc: str
+    gravedad: Gravedad
+    estudiantes_ruts: List[str]
+    documentos: List[DocumentoCreate] = []

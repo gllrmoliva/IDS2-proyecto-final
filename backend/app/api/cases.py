@@ -1,14 +1,15 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, status
 
 from typing import List
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
+from sqlalchemy.exc import IntegrityError
 
 from app.database.database import get_db
-from app.database.models import Usuario, Caso, Hito, Incidente, Documento, Estudiante
-from app.schemas.cases import CasoResponse, IncidentResponse
+from app.database.models import Usuario, Caso, Hito, Incidente, Documento, Estudiante, EstadoIncidente
+from app.schemas.cases import CasoResponse, IncidentResponse, IncidenteCreate
 
 router = APIRouter(prefix="/operate", tags=["Controlador de casos de convivencia"])
 
@@ -249,3 +250,68 @@ async def obtener_url_documento(
         "url": url,
         "expira_en": "1 hora"
     }
+
+
+@router.post("/create_incident", response_model=IncidentResponse, status_code=status.HTTP_201_CREATED)
+async def crear_incidente(
+    incidente_data: IncidenteCreate,
+    db: AsyncSession = Depends(get_db),
+    # TODO: esto debería añadirse con las sesiones implementadas
+    # current_productor = Depends(get_current_productor)
+):
+    
+    # buscar estudiantes
+    stmt = select(Estudiante).filter(
+        Estudiante.id_estudiante.in_(incidente_data.estudiantes_ruts)
+    )
+    result = await db.execute(stmt)
+    estudiantes_db = list(result.scalars().all())
+
+    if len(estudiantes_db) != len(incidente_data.estudiantes_ruts):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Uno o más estudiantes indicados no fueron encontrados en el sistema."
+        )
+
+    # crear instancia del incidente
+    nuevo_incidente = Incidente(
+            id_productor="22222222-2",   # TODO: esto se debería cambiar cuando se implementen sesiones
+        desc=incidente_data.desc,
+        fecha=incidente_data.fecha,
+        estado=EstadoIncidente.pendiente,
+        estudiantes=estudiantes_db
+    )
+
+    # 4. Procesar y asociar los documentos
+    for doc_data in incidente_data.documentos:
+        nuevo_doc = Documento(
+            bucket_name=doc_data.bucket_name,
+            object_key=doc_data.object_key,
+            nombre_original=doc_data.nombre_original,
+            mime_type=doc_data.mime_type,
+            size_bytes=doc_data.size_bytes,
+            descripcion=doc_data.descripcion,
+            id_hito=0      # TODO: esto debería ser opcional en el modelo Documento (DB)
+        )
+        nuevo_incidente.documentos.append(nuevo_doc)
+
+    # guardar todo
+    try:
+        db.add(nuevo_incidente)
+        await db.commit()
+        await db.refresh(nuevo_incidente)
+        
+    except IntegrityError as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Error de integridad en la base de datos: {str(e.orig)}"
+        )
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error inesperado al crear el incidente: {str(e)}"
+        )
+
+    return nuevo_incidente
