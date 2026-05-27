@@ -1,13 +1,120 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
+
+
+const MOCK_ESTUDIANTES = [
+  { id_estudiante: '21.345.678-9', nombre: 'Valentina Rojas Soto',    nombre_curso: '3°A' },
+  { id_estudiante: '21.456.789-0', nombre: 'Matías González Vera',    nombre_curso: '3°A' },
+  { id_estudiante: '21.567.890-1', nombre: 'Isidora Campos Núñez',    nombre_curso: '3°A' },
+  { id_estudiante: '21.678.901-2', nombre: 'Sebastián Muñoz Torres',  nombre_curso: '2°B' },
+  { id_estudiante: '21.789.012-3', nombre: 'Catalina Vega Morales',   nombre_curso: '2°B' },
+  { id_estudiante: '21.890.123-4', nombre: 'Diego Herrera Lagos',     nombre_curso: '1°C' },
+  { id_estudiante: '21.901.234-5', nombre: 'Javiera Soto Bravo',      nombre_curso: '4°D' },
+];
+
+
+const CURSOS = ['Todos', ...new Set(MOCK_ESTUDIANTES.map(e => e.nombre_curso))];
+
+
+function BuscadorEstudiante({ placeholder, onSeleccionar, excluir = [] }) {
+  const [query, setQuery] = useState('');
+  const [curso, setCurso] = useState('Todos');
+  const [abierto, setAbierto] = useState(false);
+  const [seleccionado, setSeleccionado] = useState(null);
+
+  const resultados = useMemo(() => {
+    const q = query.toLowerCase();
+    return MOCK_ESTUDIANTES.filter(e => {
+      if (excluir.includes(e.id_estudiante)) return false;
+      if (curso !== 'Todos' && e.nombre_curso !== curso) return false;
+      if (!q) return true;
+      return (
+        e.nombre.toLowerCase().includes(q) ||
+        e.id_estudiante.includes(q)
+      );
+    });
+  }, [query, curso, excluir]);
+
+  const handleSeleccionar = (est) => {
+    setSeleccionado(est);
+    setQuery(est.nombre);
+    setAbierto(false);
+    onSeleccionar(est);
+  };
+
+  const handleLimpiar = () => {
+    setSeleccionado(null);
+    setQuery('');
+    setCurso('Todos');
+    onSeleccionar(null);
+  };
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <div className="flex gap-2 items-center">
+        {/* Filtro por curso */}
+        <select
+          value={curso}
+          onChange={(e) => { setCurso(e.target.value); setAbierto(true); }}
+          className="px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 outline-none transition text-gray-700 text-sm"
+          style={{ minWidth: '90px' }}
+        >
+          {CURSOS.map(c => <option key={c} value={c}>{c}</option>)}
+        </select>
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => { setQuery(e.target.value); setAbierto(true); if (seleccionado) { setSeleccionado(null); onSeleccionar(null); } }}
+          onFocus={() => setAbierto(true)}
+          placeholder={placeholder}
+          className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-gray-700"
+        />
+        {seleccionado && (
+          <button type="button" onClick={handleLimpiar} className="text-gray-400 hover:text-gray-600 text-lg px-1">✕</button>
+        )}
+      </div>
+
+      {abierto && !seleccionado && (
+        <>
+          <div style={{ position: 'fixed', inset: 0, zIndex: 10 }} onClick={() => setAbierto(false)} />
+          <div style={{
+            position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, zIndex: 20,
+            background: 'white', border: '1px solid #d1d5db', borderRadius: '8px',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.1)', maxHeight: '180px', overflowY: 'auto',
+          }}>
+            {resultados.length === 0 ? (
+              <div className="px-4 py-3 text-sm text-gray-400 text-center">No se encontraron estudiantes</div>
+            ) : (
+              resultados.map(est => (
+                <div
+                  key={est.id_estudiante}
+                  onClick={() => handleSeleccionar(est)}
+                  className="px-4 py-2 cursor-pointer hover:bg-blue-50 text-sm border-b border-gray-100 last:border-0"
+                >
+                  <span className="font-medium text-gray-800">{est.nombre}</span>
+                  <span className="text-gray-400 ml-2">— {est.nombre_curso} · {est.id_estudiante}</span>
+                </div>
+              ))
+            )}
+          </div>
+        </>
+      )}
+
+      {seleccionado && (
+        <p className="text-xs text-gray-400 mt-1">{seleccionado.nombre_curso} · {seleccionado.id_estudiante}</p>
+      )}
+    </div>
+  );
+}
+
 export default function FormularioIncidente() {
   const [formData, setFormData] = useState({
-    titulo: '',
     fecha: '',
     descripcion: '',
-    categoria: 'conflicto_pares',
-    estudianteRut: ''
+    gravedad: 'baja',
   });
 
+  const [involucradoPrincipal, setInvolucradoPrincipal] = useState(null);
+  const [otrosInvolucrados, setOtrosInvolucrados] = useState([]);
   const [loading, setLoading] = useState(false);
   const [mensaje, setMensaje] = useState({ texto: '', tipo: '' });
 
@@ -16,15 +123,50 @@ export default function FormularioIncidente() {
     setFormData({ ...formData, [name]: value });
   };
 
+  const agregarOtroInvolucrado = () => {
+    setOtrosInvolucrados([...otrosInvolucrados, null]);
+  };
+
+  const actualizarOtroInvolucrado = (index, estudiante) => {
+    const nuevos = [...otrosInvolucrados];
+    nuevos[index] = estudiante;
+    setOtrosInvolucrados(nuevos);
+  };
+
+  const quitarOtroInvolucrado = (index) => {
+    setOtrosInvolucrados(otrosInvolucrados.filter((_, i) => i !== index));
+  };
+
+  // IDs ya seleccionados para excluirlos de otros buscadores
+  const idsSeleccionados = [
+    involucradoPrincipal?.id_estudiante,
+    ...otrosInvolucrados.map(e => e?.id_estudiante),
+  ].filter(Boolean);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setMensaje({ texto: '', tipo: '' });
 
     try {
+      // TODO: reemplazar por fetch real:
+      // const res = await fetch('/api/operate/incidents/', {
+      //   method: 'POST',
+      //   headers: { 'Content-Type': 'application/json' },
+      //   body: JSON.stringify({
+      //     desc:        formData.descripcion,
+      //     fecha:       formData.fecha.split('T')[0],
+      //     gravedad:    formData.gravedad,
+      //     estudiantes: idsSeleccionados,
+      //   }),
+      // });
+      // if (!res.ok) throw new Error();
+
       setTimeout(() => {
         setMensaje({ texto: 'Incidente registrado exitosamente en Panoptes.', tipo: 'success' });
-        setFormData({ titulo: '', fecha: '', descripcion: '', categoria: 'conflicto_pares', estudianteRut: '' });
+        setFormData({ fecha: '', descripcion: '', gravedad: 'baja' });
+        setInvolucradoPrincipal(null);
+        setOtrosInvolucrados([]);
         setLoading(false);
       }, 1000);
     } catch (error) {
@@ -49,18 +191,6 @@ export default function FormularioIncidente() {
       )}
 
       <form onSubmit={handleSubmit} className="space-y-5">
-        <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1">Título o Asunto Breve</label>
-          <input
-            type="text"
-            name="titulo"
-            required
-            value={formData.titulo}
-            onChange={handleChange}
-            placeholder="Ej. Altercado en el patio durante el recreo"
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-gray-700"
-          />
-        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
@@ -76,34 +206,65 @@ export default function FormularioIncidente() {
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">Categoría Inicial</label>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">Gravedad</label>
             <select
-              name="categoria"
-              value={formData.categoria}
+              name="gravedad"
+              value={formData.gravedad}
               onChange={handleChange}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-gray-700"
             >
-              <option value="conflicto_pares">Conflicto entre pares</option>
-              <option value="agresion_verbal">Agresión verbal / Psicológica</option>
-              <option value="acoso_escolar">Presunto acoso escolar (Bullying)</option>
-              <option value="falta_conductual">Falta conductual normativa</option>
+              <option value="baja">Baja</option>
+              <option value="media">Media</option>
+              <option value="alta">Alta</option>
             </select>
           </div>
         </div>
 
+        {/* Involucrado principal */}
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1">RUT del Estudiante Involucrado</label>
-          <input
-            type="text"
-            name="estudianteRut"
-            required
-            value={formData.estudianteRut}
-            onChange={handleChange}
-            placeholder="12.345.678-K"
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-gray-700"
+          <label className="block text-sm font-semibold text-gray-700 mb-1">Estudiante Involucrado Principal</label>
+          <BuscadorEstudiante
+            placeholder="Buscar por nombre, RUT o curso…"
+            onSeleccionar={setInvolucradoPrincipal}
+            excluir={otrosInvolucrados.map(e => e?.id_estudiante).filter(Boolean)}
           />
           <p className="text-xs text-gray-400 mt-1">El sistema cruzará este dato con el Sistema Curricular externo.</p>
         </div>
+
+        {/* Otros involucrados */}
+        {otrosInvolucrados.length > 0 && (
+          <div className="space-y-3">
+            <label className="block text-sm font-semibold text-gray-700">Otros Involucrados</label>
+            {otrosInvolucrados.map((_, index) => (
+              <div key={index} className="flex gap-2 items-start">
+                <div className="flex-1">
+                  <BuscadorEstudiante
+                    placeholder="Buscar por nombre, RUT o curso…"
+                    onSeleccionar={(est) => actualizarOtroInvolucrado(index, est)}
+                    excluir={[
+                      involucradoPrincipal?.id_estudiante,
+                      ...otrosInvolucrados.filter((_, i) => i !== index).map(e => e?.id_estudiante),
+                    ].filter(Boolean)}
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => quitarOtroInvolucrado(index)}
+                  className="mt-2 text-red-400 hover:text-red-600 font-bold text-lg px-1"
+                  title="Quitar"
+                >✕</button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <button
+          type="button"
+          onClick={agregarOtroInvolucrado}
+          className="text-sm text-blue-600 font-semibold hover:underline"
+        >
+          + Agregar otro involucrado
+        </button>
 
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-1">Descripción de los Hechos</label>

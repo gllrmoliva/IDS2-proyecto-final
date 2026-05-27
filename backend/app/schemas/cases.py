@@ -1,7 +1,7 @@
 from datetime import date
 from typing import List, Optional
 from pydantic import BaseModel, ConfigDict
-from app.database.models import EstadoCaso, Gravedad
+from app.database.models import EstadoCaso, Gravedad, EstadoIncidente
 
 
 class DocumentoResponse(BaseModel):
@@ -64,10 +64,15 @@ class IncidentResponse(BaseModel):
     id_incidente: int
     fecha: date
     desc: str
-    gravedad: Optional[Gravedad] = None
+    
+    gravedad: Gravedad
+    
     id_productor: str
     id_caso: Optional[int] = None
     id_hito: Optional[int] = None
+
+    estado: EstadoIncidente
+    motivo_rechazo: Optional[str] = None
 
     productor: Optional[ProductorResponse] = None
     estado_caso: Optional[EstadoCaso] = None

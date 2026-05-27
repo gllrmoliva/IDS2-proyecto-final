@@ -29,6 +29,12 @@ class Gravedad(str, enum.Enum):
     alta = 'alta'
 
 
+class EstadoIncidente(str, enum.Enum):
+    aceptado = 'aceptado'
+    pendiente = 'pendiente'
+    rechazado = 'rechazado'
+
+
 ####################
 # RELACIONES
 ####################
@@ -270,35 +276,55 @@ class Incidente(Base):
                                                          ),
                                               nullable=False
                                               )
-    gravedad: Mapped[Optional[Gravedad]] = mapped_column()
+    
+    gravedad: Mapped[Gravedad] = mapped_column(nullable=False)
+    
     desc: Mapped[str] = mapped_column(Text, nullable=False)
     fecha: Mapped[date] = mapped_column(Date, nullable=False)
+    
     id_caso: Mapped[Optional[int]] = mapped_column(Integer,
                                                    ForeignKey("Caso.id_caso",
                                                               deferrable=True,
                                                               initially="IMMEDIATE"
-                                                              )
+                                                              ),
+                                                   unique=True
                                                    )
+
     id_hito: Mapped[Optional[int]] = mapped_column(Integer,
                                                    ForeignKey("Hito.id_hito",
                                                               deferrable=True,
                                                               initially="IMMEDIATE"
-                                                              )
+                                                              ),
+                                                   unique=True
                                                    )
-    __table_args__ = (
-            CheckConstraint("id_caso IS NULL OR id_hito IS NULL",
-                            name="mutualmente_exclusivo"),
-            )
 
-    estudiantes: Mapped[List["Estudiante"]] = relationship(secondary=estudiante_incidente,
+    estado: Mapped[EstadoIncidente] = mapped_column(nullable=False)
+    motivo_rechazo: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    __table_args__ = (
+        CheckConstraint("id_caso IS NULL OR id_hito IS NULL",
+                        name="mutualmente_exclusivo"),
+        
+        CheckConstraint("estado = 'aceptado'::estado_incidente OR (id_caso IS NULL AND id_hito IS NULL)",
+                        name="estado_incidente_1"),
+        CheckConstraint("estado != 'aceptado'::estado_incidente OR (id_caso IS NOT NULL OR id_hito IS NOT NULL)",
+                        name="estado_incidente_2"),
+        CheckConstraint("estado = 'rechazado'::estado_incidente OR motivo_rechazo IS NULL",
+                        name="motivo_rechazo_1"),
+        CheckConstraint("estado != 'rechazado'::estado_incidente OR motivo_rechazo IS NOT NULL",
+                        name="motivo_rechazo_2"),
+    )
+
+    estudiantes: Mapped[List["Estudiante"]] = relationship(secondary="Estudiante_Incidente",
                                                            back_populates="incidentes")
+    documentos: Mapped[List["Documento"]] = relationship()
 
 
 class Documento(Base):
     __tablename__ = "Documento"
 
     id_doc: Mapped[int] = mapped_column(Integer, primary_key=True)
-    bucket_name: Mapped[str] = mapped_column(String, nullable=False, comment="Ej: 'casos-docs', 'incidentes-docs'")
+    bucket_name: Mapped[str] = mapped_column(String, nullable=False, comment="Ej: 'evidencias', 'documentos'")
     object_key: Mapped[str] = mapped_column(String, unique=True, nullable=False, comment="El UUID o path en MinIO, ej: '2026/05/uuid.pdf'")
     nombre_original: Mapped[str] = mapped_column(String, nullable=False, comment="Ej: 'informe_final.docx'")
     mime_type: Mapped[str] = mapped_column(String, nullable=False, comment="Ej: 'application/pdf'")
