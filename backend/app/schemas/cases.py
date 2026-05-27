@@ -80,3 +80,11 @@ class IncidentResponse(BaseModel):
     documentos: List[DocumentoResponse] = []
 
     model_config = ConfigDict(from_attributes=True)
+    
+class CasoCreate(BaseModel):
+    id_coordinador: str
+    estado: EstadoCaso
+    fecha_inicio: date
+    fecha_cierre: Optional[date] = None
+    desc: str
+    gravedad: Gravedad
