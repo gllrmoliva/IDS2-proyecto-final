@@ -44,3 +44,24 @@ async def get_current_active_user(
     if not current_user.es_activo:
         raise HTTPException(status_code=400, detail="Inactive user")
     return current_user
+
+
+class RoleChecker:
+    """
+    Dependencia para revisión de roles, inyectar en endpoints con allowed_roles específicos.
+
+    Nota: en teoría, se podría extender para que UsuarioBase considere una lista de roles, pero
+    el modelo de negocio no sustenta esa decisión.
+    """
+    def __init__(self, allowed_roles: list[str]):
+        self.allowed_roles = allowed_roles
+
+    def __call__(self, user: UsuarioResponse = Depends(get_current_active_user)):
+        if user.tipo_usuario in self.allowed_roles:
+            return user
+        
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Operation not permitted"
+        )
+

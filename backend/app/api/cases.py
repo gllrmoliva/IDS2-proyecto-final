@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 
-from typing import List
+from typing import List, Annotated
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -9,6 +9,8 @@ from sqlalchemy.orm import selectinload
 from app.database.database import get_db
 from app.database.models import Usuario, Caso, Hito, Incidente, Documento, Estudiante
 from app.schemas.cases import CasoResponse, IncidentResponse
+from app.api.deps import RoleChecker, get_current_active_user
+from app.crud.cases import get_incidents_for_user
 
 router = APIRouter(prefix="/operate", tags=["Controlador de casos de convivencia"])
 
@@ -23,10 +25,11 @@ async def test(db: AsyncSession = Depends(get_db)):
 @router.get("/cases/get_all", response_model=List[CasoResponse])
 async def get_all_cases(db: AsyncSession = Depends(get_db)):
     result = await db.execute(
-            select(Caso).options(selectinload(Caso.estudiantes),
-                                 selectinload(Caso.hitos).selectinload(Hito.documentos)
-                                 )
-            )
+        select(Caso).options(
+            selectinload(Caso.estudiantes),
+            selectinload(Caso.hitos).selectinload(Hito.documentos),
+        )
+    )
 
     cases = result.scalars().all()
 
@@ -37,6 +40,22 @@ async def get_all_cases(db: AsyncSession = Depends(get_db)):
 # INCIDENTES
 ################################
 
+@router.get("/incidents/read", response_model=List[IncidentResponse])
+async def read_incidents(
+    current_user: Annotated[
+        dict, Depends(RoleChecker(allowed_roles=["coordinador", "productor", "profesor_jefe"]))
+    ],
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Función para leer incidentes, se encarga de permisos (en este caso todos tienen acceso a este endpoint)
+    a través de una dependencia en RoleChecker. Lógica de data-scoping se delega a CRUD; ver función
+    respectiva.
+    """
+    # Data scoping (qué usuario ve qué) es trabajo de lógica CRUD
+    return await get_incidents_for_user(db, current_user)
+
+
 @router.get("/incidents/get_all", response_model=List[IncidentResponse])
 async def get_all_incidents(db: AsyncSession = Depends(get_db)):
     try:
@@ -44,33 +63,33 @@ async def get_all_incidents(db: AsyncSession = Depends(get_db)):
             select(Incidente, Usuario, Caso)
             .outerjoin(Usuario, Incidente.id_productor == Usuario.id_usuario)
             .outerjoin(Caso, Incidente.id_caso == Caso.id_caso)
-            .options(
-                selectinload(Incidente.estudiantes).selectinload(Estudiante.curso)
-            )
+            .options(selectinload(Incidente.estudiantes).selectinload(Estudiante.curso))
         )
-        
+
         result = await db.execute(stmt)
         rows = result.all()
 
         stmt_docs = select(Documento).where(Documento.id_incidente.isnot(None))
         docs_result = await db.execute(stmt_docs)
         documentos_bd = docs_result.scalars().all()
-        
+
         docs_por_incidente = {}
         for doc in documentos_bd:
             docs_por_incidente.setdefault(doc.id_incidente, []).append(doc)
 
         incidentes_respuesta = []
         for incidente, usuario, caso in rows:
-            
+
             estudiantes_formateados = []
             for est in incidente.estudiantes:
-                estudiantes_formateados.append({
-                    "id_estudiante": est.id_estudiante,
-                    "nombre": est.nombre,
-                    "id_curso": est.id_curso,
-                    "nombre_curso": est.curso.nombre_curso if est.curso else None
-                })
+                estudiantes_formateados.append(
+                    {
+                        "id_estudiante": est.id_estudiante,
+                        "nombre": est.nombre,
+                        "id_curso": est.id_curso,
+                        "nombre_curso": est.curso.nombre_curso if est.curso else None,
+                    }
+                )
 
             # Construir el diccionario de respuesta
             incidente_data = {
@@ -83,19 +102,19 @@ async def get_all_incidents(db: AsyncSession = Depends(get_db)):
                 "id_hito": incidente.id_hito,
                 "estado": incidente.estado,
                 "motivo_rechazo": incidente.motivo_rechazo,
-                
                 "productor": usuario,
                 "estado_caso": caso.estado if caso else None,
                 "estudiantes": estudiantes_formateados,
-                "documentos": docs_por_incidente.get(incidente.id_incidente, [])
+                "documentos": docs_por_incidente.get(incidente.id_incidente, []),
             }
-            
+
             incidentes_respuesta.append(incidente_data)
 
         return incidentes_respuesta
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error de servidor: {str(e)}")
+
 
 ################################
 # HITOS
@@ -114,18 +133,22 @@ async def create_case():
     """
     return "create_case"
 
+
 ################################
 # DOCUMENTOS / EVIDENCIAS
 ################################
+
 
 @router.post("/documentos/subir")
 async def subir_documento(
     id_hito: int = Form(...),
     id_incidente: int | None = Form(None),
     descripcion: str = Form(...),
-    usuario_tipo: str = Form(...),  # 'coordinador', 'productor', 'profesor', 'profesor_jefe'
+    usuario_tipo: str = Form(
+        ...
+    ),  # 'coordinador', 'productor', 'profesor', 'profesor_jefe'
     archivo: UploadFile = File(...),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Sube un archivo a MinIO y registra el documento en la base de datos.
@@ -140,7 +163,11 @@ async def subir_documento(
 
     # Generar object_key único
     extension = archivo.filename.split(".")[-1] if "." in archivo.filename else ""
-    object_key = f"{id_hito}/{uuid.uuid4()}.{extension}" if extension else f"{id_hito}/{uuid.uuid4()}"
+    object_key = (
+        f"{id_hito}/{uuid.uuid4()}.{extension}"
+        if extension
+        else f"{id_hito}/{uuid.uuid4()}"
+    )
 
     # Leer contenido
     contenido = await archivo.read()
@@ -149,16 +176,18 @@ async def subir_documento(
     # Subir a MinIO
     try:
         client = get_minio_client(usuario_tipo)
-        
+
         client.put_object(
             bucket_name=bucket,
             object_name=object_key,
             data=io.BytesIO(contenido),
             length=size_bytes,
-            content_type=mime_type
+            content_type=mime_type,
         )
     except S3Error as e:
-        raise HTTPException(status_code=403, detail=f"Error al subir archivo a MinIO: {str(e)}")
+        raise HTTPException(
+            status_code=403, detail=f"Error al subir archivo a MinIO: {str(e)}"
+        )
 
     # Registrar en PostgreSQL
     doc = Documento(
@@ -169,7 +198,7 @@ async def subir_documento(
         size_bytes=size_bytes,
         descripcion=descripcion,
         id_hito=id_hito,
-        id_incidente=id_incidente
+        id_incidente=id_incidente,
     )
     db.add(doc)
     await db.commit()
@@ -181,30 +210,23 @@ async def subir_documento(
         "object_key": object_key,
         "nombre_original": archivo.filename,
         "mime_type": mime_type,
-        "size_bytes": size_bytes
+        "size_bytes": size_bytes,
     }
 
 
-
 @router.get("/documentos/hito/{id_hito}")
-async def obtener_documentos_hito(
-    id_hito: int,
-    db: AsyncSession = Depends(get_db)
-):
+async def obtener_documentos_hito(id_hito: int, db: AsyncSession = Depends(get_db)):
     """
     Lista todos los documentos asociados a un hito.
     """
-    result = await db.execute(
-        select(Documento).where(Documento.id_hito == id_hito)
-    )
+    result = await db.execute(select(Documento).where(Documento.id_hito == id_hito))
     documentos = result.scalars().all()
     return documentos
 
 
 @router.get("/documentos/incidente/{id_incidente}")
 async def obtener_documentos_incidente(
-    id_incidente: int,
-    db: AsyncSession = Depends(get_db)
+    id_incidente: int, db: AsyncSession = Depends(get_db)
 ):
     """
     Lista todos los documentos asociados a un incidente.
@@ -218,9 +240,7 @@ async def obtener_documentos_incidente(
 
 @router.get("/documentos/{id_doc}/url")
 async def obtener_url_documento(
-    id_doc: int,
-    usuario_tipo: str,
-    db: AsyncSession = Depends(get_db)
+    id_doc: int, usuario_tipo: str, db: AsyncSession = Depends(get_db)
 ):
     """
     Retorna una URL firmada temporal (1 hora) para acceder al archivo en MinIO.
@@ -238,7 +258,7 @@ async def obtener_url_documento(
         url = client.presigned_get_object(
             bucket_name=doc.bucket_name,
             object_name=doc.object_key,
-            expires=timedelta(hours=1)
+            expires=timedelta(hours=1),
         )
     except S3Error as e:
         raise HTTPException(status_code=403, detail=f"Error al generar URL: {str(e)}")
@@ -247,5 +267,5 @@ async def obtener_url_documento(
         "id_doc": doc.id_doc,
         "nombre_original": doc.nombre_original,
         "url": url,
-        "expira_en": "1 hora"
+        "expira_en": "1 hora",
     }
