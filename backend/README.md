@@ -15,6 +15,18 @@ POSTGRES_PASSWORD=postgresnosGustaMucho
 POSTGRES_DB=casos_db
 DATABASE_URL=postgresql://postgres:postgresnosGustaMucho@db:5432/casos_db
 
+## es necesario que esas sean las keys
+```
+MINIO_COORDINADOR_ACCESS_KEY = panoptes-coord-key
+MINIO_COORDINADOR_SECRET_KEY = panoptes-coord-secret
+MINIO_PRODUCTOR_ACCESS_KEY = panoptes-prod-key
+MINIO_PRODUCTOR_SECRET_KEY = panoptes-prod-secret
+MINIO_PROFESOR_ACCESS_KEY = panoptes-prof-key
+MINIO_PROFESOR_SECRET_KEY = panoptes-prof-secret
+MINIO_PROFESOR_JEFE_ACCESS_KEY = panoptes-jefe-key
+MINIO_PROFESOR_JEFE_SECRET_KEY = panoptes-jefe-secret
+```
+
 SECRET_KEY="CAROLINCACAOLEOLAO"
 ALGORITHM="HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES=60
