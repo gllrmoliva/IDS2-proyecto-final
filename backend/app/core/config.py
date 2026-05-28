@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     MINIO_ROOT_USER: str
     MINIO_ROOT_PASSWORD: str
     # Antonio: voy a comentar esto hasta que me deje de dar error
+    # Joaquin añade al .env las claves del readme y el error debería desaparecer
     #MINIO_COORDINADOR_ACCESS_KEY: str
     #MINIO_COORDINADOR_SECRET_KEY: str
     #MINIO_PRODUCTOR_ACCESS_KEY: str

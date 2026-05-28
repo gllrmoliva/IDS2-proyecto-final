@@ -1,6 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, status
 
 from typing import List, Annotated
+import io
+import uuid
+from datetime import timedelta
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -9,10 +12,12 @@ from sqlalchemy.exc import IntegrityError
 
 from app.database.database import get_db
 
-from app.database.models import Usuario, Caso, Hito, Incidente, Documento, Estudiante, EstadoIncidente
-from app.schemas.cases import CasoResponse, IncidentResponse, IncidenteCreate
+from app.database.models import Usuario, Caso, Hito, Incidente, Documento, Estudiante, EstadoIncidente, Coordinador
+from app.schemas.cases import CasoResponse, IncidentResponse, CasoCreate, IncidenteCreate
 from app.api.deps import RoleChecker, get_current_active_user
 from app.crud.cases import get_incidents_for_user, get_cases_for_user
+from app.database.minio_client import get_minio_client
+from minio.error import S3Error
 
 router = APIRouter(prefix="/operate", tags=["Controlador de casos de convivencia"])
 
@@ -56,34 +61,82 @@ async def read_cases(current_user: Annotated[
     """
     return await get_cases_for_user(db, current_user) 
 
-@router.post("/cases/create")
-async def create_case():
-    """
-    Permite al Coordinador crear un caso sin necesidad de incidentes o hitos previos.
-    """
-    return "create_case"
+@router.post("/cases/", response_model=CasoResponse)
+async def create_case(
+    caso: CasoCreate,
+    current_user: Annotated[
+        dict, Depends(RoleChecker(allowed_roles=["coordinador"]))
+    ],
+    db: AsyncSession = Depends(get_db)
+):
+    """Permite al Coordinador crear un caso."""
+    result = await db.execute(
+        select(Coordinador).where(Coordinador.id_usuario == caso.id_coordinador)
+    )
+    if not result.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="Coordinador no encontrado")
+
+    nuevo_caso = Caso(
+        id_coordinador=caso.id_coordinador,
+        estado=caso.estado,
+        fecha_inicio=caso.fecha_inicio,
+        fecha_cierre=caso.fecha_cierre,
+        desc=caso.desc,
+        gravedad=caso.gravedad
+    )
+    db.add(nuevo_caso)
+    await db.commit()
+
+    result = await db.execute(
+        select(Caso)
+        .options(
+            selectinload(Caso.estudiantes),
+            selectinload(Caso.hitos)
+        )
+        .where(Caso.id_caso == nuevo_caso.id_caso)
+    )
+    return result.scalar_one()
 
 
 ################################
 # DOCUMENTOS / EVIDENCIAS
 ################################
 
+EXTENSIONES_PERMITIDAS = {"jpg", "jpeg", "png", "gif", "mp4", "mov", "pdf", "docx", "xlsx"}
+TAMANO_MAXIMO_MB = 100
+TAMANO_MAXIMO_BYTES = TAMANO_MAXIMO_MB * 1024 * 1024
 
 @router.post("/documentos/subir")
 async def subir_documento(
     id_hito: int = Form(...),
     id_incidente: int | None = Form(None),
     descripcion: str = Form(...),
-    usuario_tipo: str = Form(
-        ...
-    ),  # 'coordinador', 'productor', 'profesor', 'profesor_jefe'
     archivo: UploadFile = File(...),
+    current_user: Annotated[
+        dict, Depends(RoleChecker(allowed_roles=["coordinador", "productor", "profesor_jefe"]))
+    ] = None,
     db: AsyncSession = Depends(get_db),
 ):
     """
     Sube un archivo a MinIO y registra el documento en la base de datos.
-    El archivo va a 'documentos' si es formal, a 'evidencias' si es imagen/video.
+    El archivo va a 'evidencias' si es imagen/video, a 'documentos' si es formal.
     """
+    # Validar extensión
+    extension = archivo.filename.split(".")[-1].lower() if "." in archivo.filename else ""
+    if extension not in EXTENSIONES_PERMITIDAS:
+        raise HTTPException(status_code=400, detail=f"Extensión no permitida. Permitidas: {EXTENSIONES_PERMITIDAS}")
+
+    # Verificar que el hito existe
+    result_hito = await db.execute(select(Hito).where(Hito.id_hito == id_hito))
+    if not result_hito.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="Hito no encontrado")
+
+    # Verificar que el incidente existe (si se proporcionó)
+    if id_incidente:
+        result_inc = await db.execute(select(Incidente).where(Incidente.id_incidente == id_incidente))
+        if not result_inc.scalar_one_or_none():
+            raise HTTPException(status_code=404, detail="Incidente no encontrado")
+
     # Determinar bucket según mime_type
     mime_type = archivo.content_type or "application/octet-stream"
     if mime_type.startswith("image/") or mime_type.startswith("video/"):
@@ -92,21 +145,20 @@ async def subir_documento(
         bucket = "documentos"
 
     # Generar object_key único
-    extension = archivo.filename.split(".")[-1] if "." in archivo.filename else ""
-    object_key = (
-        f"{id_hito}/{uuid.uuid4()}.{extension}"
-        if extension
-        else f"{id_hito}/{uuid.uuid4()}"
-    )
+    object_key = f"{id_hito}/{uuid.uuid4()}.{extension}" if extension else f"{id_hito}/{uuid.uuid4()}"
 
-    # Leer contenido
+    # Leer contenido y validar tamaño
     contenido = await archivo.read()
     size_bytes = len(contenido)
+    if size_bytes > TAMANO_MAXIMO_BYTES:
+        raise HTTPException(status_code=400, detail=f"Archivo demasiado grande. Máximo {TAMANO_MAXIMO_MB}MB")
+
+    # usuario_tipo desde el token, no del cliente
+    usuario_tipo = current_user.tipo_usuario
 
     # Subir a MinIO
     try:
         client = get_minio_client(usuario_tipo)
-
         client.put_object(
             bucket_name=bucket,
             object_name=object_key,
@@ -115,9 +167,7 @@ async def subir_documento(
             content_type=mime_type,
         )
     except S3Error as e:
-        raise HTTPException(
-            status_code=403, detail=f"Error al subir archivo a MinIO: {str(e)}"
-        )
+        raise HTTPException(status_code=403, detail=f"Error al subir archivo a MinIO: {str(e)}")
 
     # Registrar en PostgreSQL
     doc = Documento(
@@ -145,43 +195,50 @@ async def subir_documento(
 
 
 @router.get("/documentos/hito/{id_hito}")
-async def obtener_documentos_hito(id_hito: int, db: AsyncSession = Depends(get_db)):
-    """
-    Lista todos los documentos asociados a un hito.
-    """
+async def obtener_documentos_hito(
+    id_hito: int,
+    current_user: Annotated[
+        dict, Depends(RoleChecker(allowed_roles=["coordinador", "productor", "profesor_jefe"]))
+    ],
+    db: AsyncSession = Depends(get_db)
+):
+    """Lista todos los documentos asociados a un hito."""
     result = await db.execute(select(Documento).where(Documento.id_hito == id_hito))
-    documentos = result.scalars().all()
-    return documentos
+    return result.scalars().all()
 
 
 @router.get("/documentos/incidente/{id_incidente}")
 async def obtener_documentos_incidente(
-    id_incidente: int, db: AsyncSession = Depends(get_db)
+    id_incidente: int,
+    current_user: Annotated[
+        dict, Depends(RoleChecker(allowed_roles=["coordinador", "productor", "profesor_jefe"]))
+    ],
+    db: AsyncSession = Depends(get_db)
 ):
-    """
-    Lista todos los documentos asociados a un incidente.
-    """
+    """Lista todos los documentos asociados a un incidente."""
     result = await db.execute(
         select(Documento).where(Documento.id_incidente == id_incidente)
     )
-    documentos = result.scalars().all()
-    return documentos
+    return result.scalars().all()
 
 
 @router.get("/documentos/{id_doc}/url")
 async def obtener_url_documento(
-    id_doc: int, usuario_tipo: str, db: AsyncSession = Depends(get_db)
+    id_doc: int,
+    current_user: Annotated[
+        dict, Depends(RoleChecker(allowed_roles=["coordinador", "productor", "profesor_jefe"]))
+    ],
+    db: AsyncSession = Depends(get_db)
 ):
-    """
-    Retorna una URL firmada temporal (1 hora) para acceder al archivo en MinIO.
-    """
-    from datetime import timedelta
-
+    """Retorna una URL firmada temporal (1 hora) para acceder al archivo en MinIO."""
     result = await db.execute(select(Documento).where(Documento.id_doc == id_doc))
     doc = result.scalar_one_or_none()
 
     if not doc:
         raise HTTPException(status_code=404, detail="Documento no encontrado")
+
+    # usuario_tipo desde el token, no del cliente
+    usuario_tipo = current_user.tipo_usuario
 
     try:
         client = get_minio_client(usuario_tipo)
@@ -199,68 +256,3 @@ async def obtener_url_documento(
         "url": url,
         "expira_en": "1 hora",
     }
-
-
-@router.post("/create_incident", response_model=IncidentResponse, status_code=status.HTTP_201_CREATED)
-async def crear_incidente(
-    incidente_data: IncidenteCreate,
-    db: AsyncSession = Depends(get_db),
-    # TODO: esto debería añadirse con las sesiones implementadas
-    # current_productor = Depends(get_current_productor)
-):
-    
-    # buscar estudiantes
-    stmt = select(Estudiante).filter(
-        Estudiante.id_estudiante.in_(incidente_data.estudiantes_ruts)
-    )
-    result = await db.execute(stmt)
-    estudiantes_db = list(result.scalars().all())
-
-    if len(estudiantes_db) != len(incidente_data.estudiantes_ruts):
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Uno o más estudiantes indicados no fueron encontrados en el sistema."
-        )
-
-    # crear instancia del incidente
-    nuevo_incidente = Incidente(
-            id_productor="22222222-2",   # TODO: esto se debería cambiar cuando se implementen sesiones
-        desc=incidente_data.desc,
-        fecha=incidente_data.fecha,
-        estado=EstadoIncidente.pendiente,
-        estudiantes=estudiantes_db
-    )
-
-    # 4. Procesar y asociar los documentos
-    for doc_data in incidente_data.documentos:
-        nuevo_doc = Documento(
-            bucket_name=doc_data.bucket_name,
-            object_key=doc_data.object_key,
-            nombre_original=doc_data.nombre_original,
-            mime_type=doc_data.mime_type,
-            size_bytes=doc_data.size_bytes,
-            descripcion=doc_data.descripcion,
-            id_hito=0      # TODO: esto debería ser opcional en el modelo Documento (DB)
-        )
-        nuevo_incidente.documentos.append(nuevo_doc)
-
-    # guardar todo
-    try:
-        db.add(nuevo_incidente)
-        await db.commit()
-        await db.refresh(nuevo_incidente)
-        
-    except IntegrityError as e:
-        await db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=f"Error de integridad en la base de datos: {str(e.orig)}"
-        )
-    except Exception as e:
-        await db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error inesperado al crear el incidente: {str(e)}"
-        )
-
-    return nuevo_incidente
