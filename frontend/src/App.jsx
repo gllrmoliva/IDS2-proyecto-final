@@ -3,6 +3,8 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { MainLayout } from "./layouts/MainLayout";
 import { IncidentsPage } from "./pages/IncidentsPage";
 import { ReportIncidentPage } from "./pages/ReportIncidentPage";
+import { CasesPage } from "./pages/CasesPage";
+import { CreateCasePage } from "./pages/CreateCasePage";
 
 function App() {
   return (
@@ -12,6 +14,8 @@ function App() {
           <Route index element={<Navigate to="/incidents" replace />} />
           <Route path="/incidents" element={<IncidentsPage />} />
           <Route path="/report" element={<ReportIncidentPage />} />
+          <Route path="/cases" element={<CasesPage />} />
+          <Route path="/cases/new" element={<CreateCasePage />} />
         </Route>
       </Routes>
     </BrowserRouter>
