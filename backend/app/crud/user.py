@@ -1,6 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from app.database.models import Usuario
+from app.database.models import Estudiante, Usuario
 from app.schemas.user import UsuarioCreate
 from app.core.security import verify_password, get_password_hash
 
@@ -43,3 +43,13 @@ async def authenticate_user(db: AsyncSession, email: str, password: str):
     if not verify_password(password, user.hashed_password):
         return False
     return user
+
+
+async def get_students(db: AsyncSession, user):
+    if user.tipo_usuario in ["coordinador", "productor", "profesor_jefe"]:
+        stmt = select(Estudiante)
+
+        result = await db.execute(stmt)
+
+        return result.scalars().all()
+
