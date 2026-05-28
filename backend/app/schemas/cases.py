@@ -101,7 +101,7 @@ class IncidenteCreate(BaseModel):
 
 class CasoCreate(BaseModel):
     id_coordinador: str
-    estado: EstadoCaso
+    estado: EstadoCaso = EstadoCaso.abierto  
     fecha_inicio: date
     fecha_cierre: Optional[date] = None
     desc: str
