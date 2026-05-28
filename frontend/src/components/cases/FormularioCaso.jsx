@@ -1,42 +1,40 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { BuscadorEstudiante } from '../shared/StudentSearch';
 
 
-export default function FormularioIncidente() {
+export default function FormularioCaso() {
   const [formData, setFormData] = useState({
-    fecha: '',
-    descripcion: '',
-    gravedad: 'baja',
+    fecha_inicio: '',
+    desc:         '',
+    gravedad:     'baja',
   });
 
-  const [involucradoPrincipal, setInvolucradoPrincipal] = useState(null);
-  const [otrosInvolucrados, setOtrosInvolucrados] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [mensaje, setMensaje] = useState({ texto: '', tipo: '' });
+  const [estudiantePrincipal, setEstudiantePrincipal] = useState(null);
+  const [otrosEstudiantes, setOtrosEstudiantes]       = useState([]);
+  const [loading, setLoading]   = useState(false);
+  const [mensaje, setMensaje]   = useState({ texto: '', tipo: '' });
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
   };
 
-  const agregarOtroInvolucrado = () => {
-    setOtrosInvolucrados([...otrosInvolucrados, null]);
-  };
+  const agregarEstudiante = () => setOtrosEstudiantes([...otrosEstudiantes, null]);
 
-  const actualizarOtroInvolucrado = (index, estudiante) => {
-    const nuevos = [...otrosInvolucrados];
+  const actualizarEstudiante = (index, estudiante) => {
+    const nuevos = [...otrosEstudiantes];
     nuevos[index] = estudiante;
-    setOtrosInvolucrados(nuevos);
+    setOtrosEstudiantes(nuevos);
   };
 
-  const quitarOtroInvolucrado = (index) => {
-    setOtrosInvolucrados(otrosInvolucrados.filter((_, i) => i !== index));
+  const quitarEstudiante = (index) => {
+    setOtrosEstudiantes(otrosEstudiantes.filter((_, i) => i !== index));
   };
 
-  // IDs ya seleccionados para excluirlos de otros buscadores
   const idsSeleccionados = [
-    involucradoPrincipal?.id_estudiante,
-    ...otrosInvolucrados.map(e => e?.id_estudiante),
+    estudiantePrincipal?.id_estudiante,
+    ...otrosEstudiantes.map(e => e?.id_estudiante),
   ].filter(Boolean);
 
   const handleSubmit = async (e) => {
@@ -46,23 +44,24 @@ export default function FormularioIncidente() {
 
     try {
       // TODO: reemplazar por fetch real:
-      // const res = await fetch('/api/operate/incidents/', {
+      // const res = await fetch('/api/operate/cases/', {
       //   method: 'POST',
       //   headers: { 'Content-Type': 'application/json' },
       //   body: JSON.stringify({
-      //     desc:        formData.descripcion,
-      //     fecha:       formData.fecha.split('T')[0],
-      //     gravedad:    formData.gravedad,
-      //     estudiantes: idsSeleccionados,
+      //     desc:         formData.desc,
+      //     fecha_inicio: formData.fecha_inicio,
+      //     gravedad:     formData.gravedad,
+      //     estado:       'abierto',
+      //     estudiantes:  idsSeleccionados,
       //   }),
       // });
       // if (!res.ok) throw new Error();
 
       setTimeout(() => {
-        setMensaje({ texto: 'Incidente registrado exitosamente en Panoptes.', tipo: 'success' });
-        setFormData({ fecha: '', descripcion: '', gravedad: 'baja' });
-        setInvolucradoPrincipal(null);
-        setOtrosInvolucrados([]);
+        setMensaje({ texto: 'Caso creado exitosamente en Panoptes.', tipo: 'success' });
+        setFormData({ fecha_inicio: '', desc: '', gravedad: 'baja' });
+        setEstudiantePrincipal(null);
+        setOtrosEstudiantes([]);
         setLoading(false);
       }, 1000);
     } catch (error) {
@@ -74,8 +73,8 @@ export default function FormularioIncidente() {
   return (
     <div className="max-w-2xl mx-auto bg-white p-8 rounded-xl shadow-md border border-gray-100 my-8">
       <div className="mb-6">
-        <h2 className="text-2xl font-bold text-gray-800">Reportar Nuevo Incidente</h2>
-        <p className="text-gray-500 text-sm">Ingrese los detalles iniciales del suceso de convivencia escolar.</p>
+        <h2 className="text-2xl font-bold text-gray-800">Crear Nuevo Caso</h2>
+        <p className="text-gray-500 text-sm">Complete los datos para abrir un nuevo caso de convivencia.</p>
       </div>
 
       {mensaje.texto && (
@@ -90,12 +89,12 @@ export default function FormularioIncidente() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">Fecha y Hora</label>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">Fecha de Inicio</label>
             <input
-              type="datetime-local"
-              name="fecha"
+              type="date"
+              name="fecha_inicio"
               required
-              value={formData.fecha}
+              value={formData.fecha_inicio}
               onChange={handleChange}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-gray-700"
             />
@@ -116,66 +115,62 @@ export default function FormularioIncidente() {
           </div>
         </div>
 
-        {/* Involucrado principal */}
+        {/* Estudiante principal */}
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-1">Estudiante Involucrado Principal</label>
           <BuscadorEstudiante
             placeholder="Buscar por nombre, RUT o curso…"
-            onSeleccionar={setInvolucradoPrincipal}
-            excluir={otrosInvolucrados.map(e => e?.id_estudiante).filter(Boolean)}
+            onSeleccionar={setEstudiantePrincipal}
+            excluir={otrosEstudiantes.map(e => e?.id_estudiante).filter(Boolean)}
           />
           <p className="text-xs text-gray-400 mt-1">El sistema cruzará este dato con el Sistema Curricular externo.</p>
         </div>
 
-        {/* Otros involucrados */}
-        {otrosInvolucrados.length > 0 && (
+        {/* Otros estudiantes */}
+        {otrosEstudiantes.length > 0 && (
           <div className="space-y-3">
-            <label className="block text-sm font-semibold text-gray-700">Otros Involucrados</label>
-            {otrosInvolucrados.map((_, index) => (
+            <label className="block text-sm font-semibold text-gray-700">Otros Estudiantes Involucrados</label>
+            {otrosEstudiantes.map((_, index) => (
               <div key={index} className="flex gap-2 items-start">
                 <div className="flex-1">
                   <BuscadorEstudiante
                     placeholder="Buscar por nombre, RUT o curso…"
-                    onSeleccionar={(est) => actualizarOtroInvolucrado(index, est)}
+                    onSeleccionar={(est) => actualizarEstudiante(index, est)}
                     excluir={[
-                      involucradoPrincipal?.id_estudiante,
-                      ...otrosInvolucrados.filter((_, i) => i !== index).map(e => e?.id_estudiante),
+                      estudiantePrincipal?.id_estudiante,
+                      ...otrosEstudiantes.filter((_, i) => i !== index).map(e => e?.id_estudiante),
                     ].filter(Boolean)}
                   />
                 </div>
-                <button
-                  type="button"
-                  onClick={() => quitarOtroInvolucrado(index)}
-                  className="mt-2 text-red-400 hover:text-red-600 font-bold text-lg px-1"
-                  title="Quitar"
-                >✕</button>
+                <button type="button" onClick={() => quitarEstudiante(index)}
+                  className="mt-2 text-red-400 hover:text-red-600 font-bold text-lg px-1" title="Quitar">✕</button>
               </div>
             ))}
           </div>
         )}
 
-        <button
-          type="button"
-          onClick={agregarOtroInvolucrado}
-          className="text-sm text-blue-600 font-semibold hover:underline"
-        >
-          + Agregar otro involucrado
+        <button type="button" onClick={agregarEstudiante}
+          className="text-sm text-blue-600 font-semibold hover:underline">
+          + Agregar otro estudiante
         </button>
 
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1">Descripción de los Hechos</label>
+          <label className="block text-sm font-semibold text-gray-700 mb-1">Descripción del Caso</label>
           <textarea
-            name="descripcion"
+            name="desc"
             required
             rows="4"
-            value={formData.descripcion}
+            value={formData.desc}
             onChange={handleChange}
-            placeholder="Describa de forma objetiva lo sucedido, indicando las acciones observadas..."
+            placeholder="Describa el contexto y los antecedentes del caso…"
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-gray-700 resize-none"
           />
         </div>
 
-        <div className="flex justify-end pt-2">
+        <div className="flex justify-between items-center pt-2">
+          <Link to="/cases" className="text-sm text-gray-500 hover:underline">
+            ← Volver a casos
+          </Link>
           <button
             type="submit"
             disabled={loading}
@@ -183,7 +178,7 @@ export default function FormularioIncidente() {
               loading ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 active:scale-95'
             }`}
           >
-            {loading ? 'Registrando...' : 'Enviar Reporte'}
+            {loading ? 'Creando...' : 'Crear Caso'}
           </button>
         </div>
       </form>

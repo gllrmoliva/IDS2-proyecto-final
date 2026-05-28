@@ -97,3 +97,12 @@ class IncidenteCreate(BaseModel):
     gravedad: Gravedad
     estudiantes_ruts: List[str]
     documentos: List[DocumentoCreate] = []
+
+
+class CasoCreate(BaseModel):
+    id_coordinador: str
+    estado: EstadoCaso = EstadoCaso.abierto  
+    fecha_inicio: date
+    fecha_cierre: Optional[date] = None
+    desc: str
+    gravedad: Gravedad

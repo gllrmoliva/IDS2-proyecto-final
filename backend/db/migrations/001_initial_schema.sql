@@ -1,6 +1,5 @@
 CREATE TYPE "estado_caso" AS ENUM (
   'abierto',
-  'en proceso',
   'cerrado'
 );
 

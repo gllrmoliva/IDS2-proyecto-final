@@ -5,7 +5,7 @@
 //   - Barra de filtros
 //   - Tabla de incidentes 
 //   - Modal de detalle con acciones aprobar/rechazar
-
+ 
 import { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useIncidents } from "../../hooks/useIncidents";
@@ -13,7 +13,9 @@ import { IncidentFilters } from "./IncidentFilters";
 import { INITIAL_FILTERS } from "../../data/mockIncidents";
 import { IncidentTable } from "./IncidentTable";
 import { IncidentDetailModal } from "./IncidentDetailModal";
-
+import { StatCard } from "../shared/StatCards";
+import { LoadingState, ErrorState } from "../shared/LodingAndError";
+ 
 // Devuelve la fecha límite inferior según el periodo elegido
 function getFechaLimite(periodo) {
   if (periodo === "todos" || periodo === "custom") return null;
@@ -25,7 +27,7 @@ function getFechaLimite(periodo) {
   fecha.setDate(hoy.getDate() - dias);
   return fecha;
 }
-
+ 
 export function IncidentMonitorView() {
   const { incidents, loading, error, reload, handleAprobar, handleRechazar, handleRevertir } = useIncidents();
   const [filters, setFilters]   = useState(INITIAL_FILTERS);
@@ -39,7 +41,7 @@ export function IncidentMonitorView() {
     const hasta = filters.periodo === "custom" && filters.fechaHasta
       ? new Date(filters.fechaHasta + "T23:59:59")
       : null;
-
+ 
     return incidents.filter((inc) => {
       const q = filters.search.toLowerCase();
       const matchSearch =
@@ -48,11 +50,11 @@ export function IncidentMonitorView() {
         inc.tipo.toLowerCase().includes(q) ||
         inc.reportadoPor.toLowerCase().includes(q) ||
         inc.id.toLowerCase().includes(q);
-
+ 
       const matchEstado   = filters.estado   === "todos" || inc.estado        === filters.estado;
       const matchGravedad = filters.gravedad === "todas" || inc.gravedad      === filters.gravedad;
       const matchCurso    = filters.curso    === "todos" || inc.alumno.curso  === filters.curso;
-
+ 
       // Filtro de fecha
       const fechaInc = new Date(inc.fecha + "T00:00:00");
       const matchFecha =
@@ -62,14 +64,14 @@ export function IncidentMonitorView() {
         : desde                         ? fechaInc >= desde
         : hasta                         ? fechaInc <= hasta
         : true;
-
+ 
       return matchSearch && matchEstado && matchGravedad && matchCurso && matchFecha;
     }).sort((a, b) => {
       const orden = { pendiente: 0, aprobado: 1, rechazado: 2 };
       return (orden[a.estado] ?? 9) - (orden[b.estado] ?? 9);
     });
   }, [incidents, filters]);
-
+ 
   
   const stats = useMemo(() => ({
     total:     incidents.length,
@@ -77,17 +79,17 @@ export function IncidentMonitorView() {
     aprobado:  incidents.filter(i => i.estado === "aprobado").length,
     rechazado: incidents.filter(i => i.estado === "rechazado").length,
   }), [incidents]);
-
+ 
  
   // handleAprobar, handleRechazar y handleRevertir vienen de useIncidents
-
+ 
   // Estados de carga y error
-  if (loading) return <LoadingState />;
+  if (loading) return <LoadingState mensaje="Cargando incidentes…" />;
   if (error)   return <ErrorState message={error} onRetry={reload} />;
-
+ 
   return (
     <div className="min-h-screen bg-slate-100 p-6 flex flex-col gap-6">
-
+ 
       {  /* Header + botón de recarga */ }
       <div className="flex items-center justify-between">
         <div>
@@ -111,7 +113,7 @@ export function IncidentMonitorView() {
           </button>
         </div>
       </div>
-
+ 
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <StatCard label="Total"     value={stats.total}     color="text-blue-700"  bg="bg-blue-50"   border="border-blue-200" />
@@ -119,7 +121,7 @@ export function IncidentMonitorView() {
         <StatCard label="Aprobados"  value={stats.aprobado}  color="text-blue-700" bg="bg-blue-50"  border="border-blue-200" />
         <StatCard label="Rechazados" value={stats.rechazado} color="text-blue-700"   bg="bg-blue-50"   border="border-blue-200" />
       </div>
-
+ 
       {/* Búsqueda + filtros */}
       <div className="flex flex-col gap-3">
         <div className="flex gap-3 items-center">
@@ -136,12 +138,12 @@ export function IncidentMonitorView() {
           Mostrando <strong>{filtered.length}</strong> de <strong>{incidents.length}</strong> incidentes
         </p>
       </div>
-
+ 
       {/* Tabla */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5">
         <IncidentTable incidents={filtered} onSelect={setSelected} />
       </div>
-
+ 
       {/* Modal de detalle */}
       {selected && (
         <IncidentDetailModal
@@ -152,52 +154,6 @@ export function IncidentMonitorView() {
           onRevertir={handleRevertir}
         />
       )}
-    </div>
-  );
-}
-
-// Componentes auxiliares
-
-function StatCard({ label, value, color, bg, border }) {
-  return (
-    <div className={`${bg} border ${border} rounded-2xl p-4 text-center`}>
-      <div className={`text-4xl font-bold ${color}`}>{value}</div>
-      <div className="text-xs text-gray-500 uppercase tracking-wide mt-1 font-semibold">{label}</div>
-    </div>
-  );
-}
-
-function LoadingState() {
-  return (
-    <div className="min-h-screen bg-slate-100 flex items-center justify-center">
-      <div className="text-center text-gray-400">
-        {/* Spinner SVG animado */}
-        <svg className="mx-auto mb-4 w-12 h-12 animate-spin text-blue-900" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
-        </svg>
-        <p className="font-semibold">Cargando incidentes…</p>
-      </div>
-    </div>
-  );
-}
-
-function ErrorState({ message, onRetry }) {
-  return (
-    <div className="min-h-screen bg-slate-100 flex items-center justify-center">
-      <div className="text-center bg-white rounded-2xl p-8 shadow border border-red-100 max-w-sm">
-        {/* Ícono de error SVG */}
-        <svg className="mx-auto mb-4 w-14 h-14 text-red-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-        </svg>
-        <p className="font-semibold text-red-700 mb-4">{message}</p>
-        <button
-          onClick={onRetry}
-          className="px-6 py-2.5 bg-blue-700 text-white rounded-xl font-bold hover:bg-blue-800 transition-colors"
-        >
-          Reintentar
-        </button>
-      </div>
     </div>
   );
 }
