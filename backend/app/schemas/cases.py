@@ -1,6 +1,6 @@
 from datetime import date
 from typing import List, Optional
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from app.database.models import EstadoCaso, Gravedad, EstadoIncidente
 
 
@@ -91,12 +91,14 @@ class DocumentoCreate(BaseModel):
     descripcion: str
 
 
-class IncidenteCreate(BaseModel):
-    fecha: date
-    desc: str
+class IncidentCreate(BaseModel):
     gravedad: Gravedad
-    estudiantes_ruts: List[str]
-    documentos: List[DocumentoCreate] = []
+    desc: str
+    fecha: date = Field(default_factory=date.today)
+    estado: EstadoIncidente = Field(default=EstadoIncidente.pendiente)
+    estudiantes_ids: List[str] = Field(..., min_length=1)   # estos son los RUT
+    
+    documentos: List[DocumentoCreate] = Field(default_factory=list)
 
 
 class CasoCreate(BaseModel):
