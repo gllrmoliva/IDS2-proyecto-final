@@ -9,12 +9,44 @@ CREATE TYPE "estado_incidente" AS ENUM (
   'rechazado'
 );
 
-
 CREATE TYPE "gravedad" AS ENUM (
-  'baja',
-  'media',
-  'alta'
+  'leve',
+  'grave',
+  'muy_grave'
 );
+
+CREATE TYPE "tipo_hito" AS ENUM (
+  'tramite',
+  'medida'
+);
+
+CREATE TYPE "nivel_medida" AS ENUM (
+  'cautelar',
+  'formativa_n1',
+  'disciplinaria_n2',
+  'excepcional_n3'
+);
+
+CREATE TYPE "rol_involucrado" AS ENUM (
+  'afectado_victima',
+  'autor_agresor',
+  'complice',
+  'testigo_espectador'
+);
+
+CREATE TYPE "categoria_convivencia" AS ENUM (
+  'violencia_fisica',
+  'violencia_psicologica_acoso',
+  'disrupcion_desacato',
+  'probidad_fraude',
+  'dano_infraestructura_bienes',
+  'conductas_riesgo_sustancias',
+  'privacidad_tecnologia',
+  'sexualidad_obscenidad',
+  'valores_institucionales',
+  'otro'
+);
+
 
 CREATE TABLE "Usuario" (
   "id_usuario" varchar PRIMARY KEY,
@@ -58,14 +90,22 @@ CREATE TABLE "Caso" (
   "fecha_inicio" date NOT NULL,
   "fecha_cierre" date,
   "desc" text NOT NULL,
-  "gravedad" gravedad NOT NULL
+  "gravedad" gravedad NOT NULL,
+  "categoria" categoria_convivencia NOT NULL
 );
 
 CREATE TABLE "Hito" (
   "id_hito" integer PRIMARY KEY,
   "id_caso" integer NOT NULL,
+  "tipo" tipo_hito NOT NULL,
+  "nivel_medida" nivel_medida,
   "desc" text NOT NULL,
-  "fecha" date NOT NULL
+  "fecha" date NOT NULL,
+  CONSTRAINT "chk_hito_medida_nivel" 
+  CHECK (
+    (tipo = 'medida'::tipo_hito AND nivel_medida IS NOT NULL) OR 
+    (tipo = 'tramite'::tipo_hito AND nivel_medida IS NULL)
+  )
 );
 
 CREATE TABLE "Incidente" (
@@ -74,15 +114,17 @@ CREATE TABLE "Incidente" (
   "gravedad" gravedad NOT NULL,
   "desc" text NOT NULL,
   "fecha" date NOT NULL,
-  "id_caso" integer UNIQUE,
-  "id_hito" integer UNIQUE,
+  "id_caso" integer UNIQUE, -- Elevación como evento originario (1:1)
+  "id_caso_acumulado" integer, -- Elevación como reincidencia anexa (N:1)
   "estado" estado_incidente NOT NULL,
   "motivo_rechazo" text,
-  CONSTRAINT "mutualmente_exclusivo" CHECK (id_caso IS NULL OR id_hito IS NULL),
+  "categoria" categoria_convivencia NOT NULL,
+  CONSTRAINT "mutualmente_exclusivo_ruta" 
+  CHECK (id_caso IS NULL OR id_caso_acumulado IS NULL),
   CONSTRAINT "estado_incidente_1"
-  CHECK (estado = 'aceptado'::estado_incidente OR (id_caso is NULL AND id_hito is NULL)),
+  CHECK (estado = 'aceptado'::estado_incidente OR (id_caso is NULL AND id_caso_acumulado is NULL)),
   CONSTRAINT "estado_incidente_2"
-  CHECK (estado != 'aceptado'::estado_incidente OR (id_caso is not NULL OR id_hito is not NULL)),
+  CHECK (estado != 'aceptado'::estado_incidente OR (id_caso is not NULL OR id_caso_acumulado is not NULL)),
   CONSTRAINT "motivo_rechazo_1"
   CHECK (estado = 'rechazado'::estado_incidente OR motivo_rechazo is NULL),
   CONSTRAINT "motivo_rechazo_2"
@@ -102,19 +144,21 @@ CREATE TABLE "Documento" (
 );
 
 CREATE TABLE "Estudiante_Caso" (
-  "id_estudiante" varchar NOT NULL, -- Modificado a varchar
+  "id_estudiante" varchar NOT NULL,
   "id_caso" integer NOT NULL,
+  "rol" rol_involucrado,
   PRIMARY KEY ("id_estudiante", "id_caso")
 );
 
 CREATE TABLE "Estudiante_Incidente" (
-  "id_estudiante" varchar NOT NULL, -- Modificado a varchar
+  "id_estudiante" varchar NOT NULL,
   "id_incidente" integer NOT NULL,
+  "rol" rol_involucrado,
   PRIMARY KEY ("id_estudiante", "id_incidente")
 );
 
 CREATE TABLE "Estudiante_Hito" (
-  "id_estudiante" varchar NOT NULL, -- Modificado a varchar
+  "id_estudiante" varchar NOT NULL,
   "id_hito" integer NOT NULL,
   PRIMARY KEY ("id_estudiante", "id_hito")
 );
@@ -133,7 +177,7 @@ ALTER TABLE "Caso" ADD FOREIGN KEY ("id_coordinador") REFERENCES "Coordinador" (
 ALTER TABLE "Hito" ADD FOREIGN KEY ("id_caso") REFERENCES "Caso" ("id_caso") ON DELETE CASCADE DEFERRABLE INITIALLY IMMEDIATE;
 ALTER TABLE "Incidente" ADD FOREIGN KEY ("id_productor") REFERENCES "Productor" ("id_usuario") DEFERRABLE INITIALLY IMMEDIATE;
 ALTER TABLE "Incidente" ADD FOREIGN KEY ("id_caso") REFERENCES "Caso" ("id_caso") DEFERRABLE INITIALLY IMMEDIATE;
-ALTER TABLE "Incidente" ADD FOREIGN KEY ("id_hito") REFERENCES "Hito" ("id_hito") DEFERRABLE INITIALLY IMMEDIATE;
+ALTER TABLE "Incidente" ADD FOREIGN KEY ("id_caso_acumulado") REFERENCES "Caso" ("id_caso") DEFERRABLE INITIALLY IMMEDIATE;
 ALTER TABLE "Documento" ADD FOREIGN KEY ("id_hito") REFERENCES "Hito" ("id_hito") DEFERRABLE INITIALLY IMMEDIATE;
 ALTER TABLE "Documento" ADD FOREIGN KEY ("id_incidente") REFERENCES "Incidente" ("id_incidente") DEFERRABLE INITIALLY IMMEDIATE;
 ALTER TABLE "Estudiante_Caso" ADD FOREIGN KEY ("id_estudiante") REFERENCES "Estudiante" ("id_estudiante") ON DELETE CASCADE DEFERRABLE INITIALLY IMMEDIATE;
