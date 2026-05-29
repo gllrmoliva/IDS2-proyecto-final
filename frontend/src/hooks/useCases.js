@@ -5,7 +5,25 @@
 import { useState, useEffect, useCallback } from "react";
 import { MOCK_CASES } from "../data/mockCases";
 
-const USE_MOCK = true;
+const USE_MOCK = false;
+
+// --- HOTFIX: Auto-login para desarrollo ---
+const fetchDevToken = async () => {
+  const res = await fetch("/api/auth/token", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: new URLSearchParams({
+      username: "ana.silva@colegio.cl",
+      password: "testpassword",
+    }),
+  });
+  if (!res.ok) throw new Error("Fallo el auto-login de desarrollo");
+  const data = await res.json();
+  return data.access_token;
+};
+// ------------------------------------------
 
 function mapCase(c) {
   return {
@@ -16,11 +34,15 @@ function mapCase(c) {
     fechaCierre: c.fecha_cierre ?? null,
     descripcion: c.desc,
     gravedad:    c.gravedad,
-    estudiantes: c.estudiantes ?? [],
+    categoria:   c.categoria,
+    // Desempaquetar el Association Object usando la nueva llave
+    estudiantes: (c.estudiantes ?? []).map(e => ({
+      ...e.estudiante, // Extrae id_estudiante, nombre, nombre_curso
+      rol: e.rol ?? "Sin rol" // Conserva el rol investigativo
+    })),
     hitos:       (c.hitos ?? []).sort((a, b) => new Date(a.fecha) - new Date(b.fecha)),
   };
 }
-
 
 const fetchFromAPI = async (token) => {
   const res = await fetch("/api/operate/cases/read", {
@@ -37,16 +59,27 @@ const fetchFromAPI = async (token) => {
 const fetchMock = () =>
   new Promise((resolve) => setTimeout(() => resolve(MOCK_CASES.map(mapCase)), 600));
 
-export function useCases(token = null) {
+export function useCases(initialToken = null) {
   const [cases, setCases]     = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState(null);
+  
+  // Guardamos el token en el estado para poder reusarlo en los PATCH
+  const [activeToken, setActiveToken] = useState(initialToken);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const data = USE_MOCK ? await fetchMock() : await fetchFromAPI(token);
+      let currentToken = activeToken;
+      
+      // Ejecutar hotfix si no hay token
+      if (!USE_MOCK && !currentToken) {
+        currentToken = await fetchDevToken();
+        setActiveToken(currentToken);
+      }
+
+      const data = USE_MOCK ? await fetchMock() : await fetchFromAPI(currentToken);
       setCases(data);
     } catch (e) {
       setError("No se pudo cargar los casos. Intenta nuevamente.");
@@ -54,7 +87,7 @@ export function useCases(token = null) {
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [activeToken]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -71,13 +104,16 @@ export function useCases(token = null) {
           method: "PATCH",
           headers: {
             "Content-Type": "application/json",
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            ...(activeToken ? { Authorization: `Bearer ${activeToken}` } : {}),
           },
           body: JSON.stringify({ estado: nuevoEstado }),
         });
-      } catch (e) { console.error("Error al cambiar estado:", e); }
+      } catch (e) { 
+        console.error("Error al cambiar estado:", e); 
+        // Opcional: Revertir el estado local si falla la red
+      }
     }
-  }, [cases, updateLocal, token]);
+  }, [cases, updateLocal, activeToken]);
 
   return { cases, loading, error, reload: load, handleCambiarEstado };
 }

@@ -1,11 +1,27 @@
 // useIncidents.js
-// Hook que abstrae el origen de datos de incidentes.
-// Para activar el backend: cambiar USE_MOCK a false.
-
 import { useState, useEffect, useCallback } from "react";
 import { MOCK_INCIDENTS } from "../data/mockIncidents";
 
-const USE_MOCK = true;
+const USE_MOCK = false;
+
+// --- HOTFIX: Auto-login para desarrollo ---
+const fetchDevToken = async () => {
+  const res = await fetch("/api/auth/token", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    // FastAPI requiere Form Data para el login, no JSON
+    body: new URLSearchParams({
+      username: "ana.silva@colegio.cl",
+      password: "testpassword",
+    }),
+  });
+  if (!res.ok) throw new Error("Fallo el auto-login de desarrollo");
+  const data = await res.json();
+  return data.access_token;
+};
+// ------------------------------------------
 
 // Mapeo de estados 
 function mapEstadoBackendToFront(estado) {
@@ -19,12 +35,14 @@ function mapEstadoFrontToBackend(estado) {
 
 // Mapeador
 function mapIncident(inc) {
-  const primerEstudiante = inc.estudiantes?.[0];
+  // Navegar al primer estudiante real a través de la nueva llave
+  const primerEstudiante = inc.estudiantes?.[0]?.estudiante;
+  
   return {
     id:            `INC-${String(inc.id_incidente).padStart(3, "0")}`,
     _id_incidente: inc.id_incidente,
     fecha:         inc.fecha,
-    tipo:          inc.desc?.split(".")[0] ?? "Incidente",
+    tipo:          inc.categoria ?? (inc.desc?.split(".")[0] ?? "Incidente"),
     descripcion:   inc.desc,
     gravedad:      inc.gravedad ?? "baja",
     estado:        mapEstadoBackendToFront(inc.estado),
@@ -38,13 +56,11 @@ function mapIncident(inc) {
       rut:    primerEstudiante?.id_estudiante ?? "—",
     },
     involucrados: (inc.estudiantes ?? []).map(e => ({
-      nombre: e.nombre,
-      rol:    "Estudiante",
+      nombre: e.estudiante.nombre,
+      rol:    e.rol ?? "Estudiante", // Extrae el rol real desde la base de datos
     })),
   };
 }
-
-
 
 const fetchFromAPI = async (token) => {
   const res = await fetch("/api/operate/incidents/read", {
@@ -78,17 +94,27 @@ async function patchIncidentEstado(idIncidente, estado, motivoRechazo = null, to
 const fetchMock = () =>
   new Promise((resolve) => setTimeout(() => resolve(MOCK_INCIDENTS), 600));
 
-
-export function useIncidents(token = null) {
+export function useIncidents(initialToken = null) {
   const [incidents, setIncidents] = useState([]);
   const [loading, setLoading]     = useState(true);
   const [error, setError]         = useState(null);
+  
+  // Guardamos el token en el estado para poder reusarlo en los PATCH
+  const [activeToken, setActiveToken] = useState(initialToken);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const data = USE_MOCK ? await fetchMock() : await fetchFromAPI(token);
+      let currentToken = activeToken;
+      
+      // Ejecutar hotfix si no hay token
+      if (!USE_MOCK && !currentToken) {
+        currentToken = await fetchDevToken();
+        setActiveToken(currentToken); // Guardar para uso futuro
+      }
+
+      const data = USE_MOCK ? await fetchMock() : await fetchFromAPI(currentToken);
       setIncidents(data);
     } catch (e) {
       setError("No se pudo cargar los incidentes. Intenta nuevamente.");
@@ -96,7 +122,7 @@ export function useIncidents(token = null) {
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [activeToken]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -110,28 +136,28 @@ export function useIncidents(token = null) {
     const inc = incidents.find(i => i.id === id);
     updateLocal(id, { estado: "aprobado" });
     if (!USE_MOCK && inc?._id_incidente) {
-      try { await patchIncidentEstado(inc._id_incidente, "aprobado", null, token); }
+      try { await patchIncidentEstado(inc._id_incidente, "aprobado", null, activeToken); }
       catch (e) { console.error("Error al aprobar:", e); updateLocal(id, { estado: "pendiente" }); }
     }
-  }, [incidents, updateLocal, token]);
+  }, [incidents, updateLocal, activeToken]);
 
   const handleRechazar = useCallback(async (id, razon) => {
     const inc = incidents.find(i => i.id === id);
     updateLocal(id, { estado: "rechazado", razonRechazo: razon });
     if (!USE_MOCK && inc?._id_incidente) {
-      try { await patchIncidentEstado(inc._id_incidente, "rechazado", razon, token); }
+      try { await patchIncidentEstado(inc._id_incidente, "rechazado", razon, activeToken); }
       catch (e) { console.error("Error al rechazar:", e); updateLocal(id, { estado: "pendiente", razonRechazo: null }); }
     }
-  }, [incidents, updateLocal, token]);
+  }, [incidents, updateLocal, activeToken]);
 
   const handleRevertir = useCallback(async (id) => {
     const inc = incidents.find(i => i.id === id);
     updateLocal(id, { estado: "pendiente", razonRechazo: null });
     if (!USE_MOCK && inc?._id_incidente) {
-      try { await patchIncidentEstado(inc._id_incidente, "pendiente", null, token); }
+      try { await patchIncidentEstado(inc._id_incidente, "pendiente", null, activeToken); }
       catch (e) { console.error("Error al revertir:", e); }
     }
-  }, [incidents, updateLocal, token]);
+  }, [incidents, updateLocal, activeToken]);
 
   return { incidents, loading, error, reload: load, updateLocal, handleAprobar, handleRechazar, handleRevertir };
 }

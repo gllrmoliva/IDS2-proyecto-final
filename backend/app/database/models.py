@@ -256,7 +256,14 @@ class Estudiante(Base):
         ),
     )
 
+
     curso: Mapped[Optional["Curso"]] = relationship(back_populates="estudiantes")
+
+    @property
+    def nombre_curso(self) -> Optional[str]:
+        """Expone el nombre del curso de forma plana para Pydantic."""
+        return self.curso.nombre_curso if self.curso else None
+
     
     casos: Mapped[List["EstudianteCaso"]] = relationship(back_populates="estudiante", cascade="all, delete-orphan")
     incidentes: Mapped[List["EstudianteIncidente"]] = relationship(back_populates="estudiante", cascade="all, delete-orphan")

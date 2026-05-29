@@ -5,11 +5,11 @@
 
 -- 1. IDENTIDADES (Usuario)
 INSERT INTO "Usuario" ("id_usuario", "nombre", "email", "tipo_usuario", "es_activo", "hashed_password") VALUES
-('11111111-1', 'Ana Silva (Coordinadora)', 'ana.silva@colegio.cl', 'coordinador', true, '$argon2id$v=19$m=65536,t=3,p=4$v3g6v5o560tjei3d67pLsQ$vOG7SLI/xcihRYXn22f7YP0W1WbKNiEtmK9Y7b/ICcs'),
-('22222222-2', 'Carlos Inspector (Productor)', 'carlos.insp@colegio.cl', 'productor', true, '$argon2id$v=19$m=65536,t=3,p=4$BflesKr+5JiHE5V+bRbFqA$2mezGOPsMDqHO16+DSVuUB58rK2IH46fdRVozwspmwk'),
-('33333333-3', 'Roberto Profesor Inspector (Productor)', 'roberto.insp@colegio.cl', 'productor', true, '$argon2id$v=19$m=65536,t=3,p=4$FyiE2qJzZT1ZpHoTEYJGMA$3dsMiTCWLpacLN8kjenmWs3etybelYO1Pw4m0zfm5Hk'),
-('44444444-4', 'María Profesora (Profesor Jefe)', 'maria.prof@colegio.cl', 'profesor_jefe', true, '$argon2id$v=19$m=65536,t=3,p=4$UzwZMput7ak/9hFKEl+5Kw$XnnDqt1P9maO8I1p+EX9EuQyhs76Lta4Hou04TjoXOM'),
-('55555555-5', 'Usuario Eliminado', 'borrado@colegio.cl', 'productor', false, '$argon2id$v=19$m=65536,t=3,p=4$K03wg1do6eLZ9TvNPIChLg$ezRhAEPXdpPd5DuCO3NQnoL5wdZzG7H5IXWmREFauRk');
+('11111111-1', 'Ana Silva (Coordinadora)', 'ana.silva@colegio.cl', 'coordinador', true, '$argon2id$v=19$m=65536,t=3,p=4$v3g6v5o560tjei3d67pLsQ$vOG7SLI/xcihRYXn22f7YP0W1WbKNiEtmK9Y7b/ICcs'), -- testpassword
+('22222222-2', 'Carlos Inspector (Productor)', 'carlos.insp@colegio.cl', 'productor', true, '$argon2id$v=19$m=65536,t=3,p=4$BflesKr+5JiHE5V+bRbFqA$2mezGOPsMDqHO16+DSVuUB58rK2IH46fdRVozwspmwk'), -- testpassword1
+('33333333-3', 'Roberto Profesor Inspector (Productor)', 'roberto.insp@colegio.cl', 'productor', true, '$argon2id$v=19$m=65536,t=3,p=4$FyiE2qJzZT1ZpHoTEYJGMA$3dsMiTCWLpacLN8kjenmWs3etybelYO1Pw4m0zfm5Hk'), -- testpassword2
+('44444444-4', 'María Profesora (Profesor Jefe)', 'maria.prof@colegio.cl', 'profesor_jefe', true, '$argon2id$v=19$m=65536,t=3,p=4$UzwZMput7ak/9hFKEl+5Kw$XnnDqt1P9maO8I1p+EX9EuQyhs76Lta4Hou04TjoXOM'), -- testpassowrd3
+('55555555-5', 'Usuario Eliminado', 'borrado@colegio.cl', 'productor', false, '$argon2id$v=19$m=65536,t=3,p=4$K03wg1do6eLZ9TvNPIChLg$ezRhAEPXdpPd5DuCO3NQnoL5wdZzG7H5IXWmREFauRk'); -- nosGustaMucho
 
 -- 2. TPT SUBCLASSES (Domain Roles)
 INSERT INTO "Coordinador" ("id_usuario") VALUES ('11111111-1');
