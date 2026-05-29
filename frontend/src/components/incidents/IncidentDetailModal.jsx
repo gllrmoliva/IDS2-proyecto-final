@@ -14,96 +14,69 @@ const MOCK_CASOS = [
   { id: "CASO-003", alumno: "Diego Herrera Lagos", curso: "1°C", tipo: "Acoso escolar (bullying)" },
 ];
 
-function CasoBuscador() {
-  const [query, setQuery] = useState("");
+function CasoBuscador({ involucrados = [], onSeleccionar }) {
   const [seleccionado, setSeleccionado] = useState(null);
-  const [abierto, setAbierto] = useState(false);
 
-  const resultados = useMemo(() => {
-    if (!query.trim()) return MOCK_CASOS;
-    const q = query.toLowerCase();
-    return MOCK_CASOS.filter(c =>
-      c.id.toLowerCase().includes(q) ||
-      c.alumno.toLowerCase().includes(q) ||
-      c.curso.toLowerCase().includes(q)
-    );
-  }, [query]);
-
-  const handleSeleccionar = (caso) => {
-    setSeleccionado(caso);
-    setQuery(caso.id);
-    setAbierto(false);
-  };
-
-  const handleLimpiar = () => {
-    setSeleccionado(null);
-    setQuery("");
-    setAbierto(true);
-  };
+  // Filtrar casos activos donde participa alguno de los involucrados
+  // TODO: reemplazar por fetch real a /api/operate/cases/read filtrado
+  const nombresInvolucrados = involucrados.map(i => i.nombre.toLowerCase());
+  const casosRelevantes = MOCK_CASOS.filter(c =>
+    (c.estado === "abierto" || c.estado === "en proceso") &&
+    nombresInvolucrados.some(nombre => c.alumno.toLowerCase().includes(nombre.split(" ")[0].toLowerCase()))
+  );
 
   return (
-    <div className="flex flex-col gap-1">
-      <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">
-        Caso al que pertenece
-      </label>
-      <div style={{ position: "relative" }}>
-        <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-          <input
-            type="text"
-            placeholder="Buscar por ID (ej: CASO-001), alumno o curso…"
-            value={query}
-            onChange={(e) => { setQuery(e.target.value); setAbierto(true); setSeleccionado(null); }}
-            onFocus={() => setAbierto(true)}
-            className="w-full px-3 py-2 rounded-xl border-2 border-gray-200 focus:border-blue-500 focus:outline-none text-sm"
-          />
-          {seleccionado && (
-            <button onClick={handleLimpiar}
-              className="text-gray-400 hover:text-gray-600 text-lg flex-shrink-0"
-              title="Cambiar caso">✕</button>
-          )}
-        </div>
-        {abierto && !seleccionado && (
-          <>
-            <div style={{ position: "fixed", inset: 0, zIndex: 60 }} onClick={() => setAbierto(false)} />
-            <div style={{
-              position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0,
-              zIndex: 70, background: "white", border: "2px solid #bfdbfe",
-              borderRadius: "12px", boxShadow: "0 8px 30px rgba(0,0,0,0.15)",
-              maxHeight: "200px", overflowY: "auto",
-            }}>
-              {resultados.length === 0 ? (
-                <div style={{ padding: "16px", fontSize: "13px", color: "#9ca3af", textAlign: "center" }}>
-                  No se encontraron casos
-                </div>
-              ) : (
-                resultados.map((caso) => (
-                  <div key={caso.id} onClick={() => handleSeleccionar(caso)}
-                    style={{ padding: "10px 14px", cursor: "pointer", borderBottom: "1px solid #f0f2f7" }}
-                    onMouseEnter={e => e.currentTarget.style.background = "#eff6ff"}
-                    onMouseLeave={e => e.currentTarget.style.background = "white"}
-                  >
-                    <div style={{ fontWeight: "700", fontSize: "13px", color: "#1e3a7a" }}>{caso.id}</div>
-                    <div style={{ fontSize: "12px", color: "#6b7280" }}>{caso.alumno} · {caso.curso} · {caso.tipo}</div>
-                  </div>
-                ))
-              )}
-            </div>
-          </>
-        )}
-      </div>
-      {seleccionado && (
+    <div className="flex flex-col gap-3">
+      {casosRelevantes.length === 0 ? (
         <div style={{
-          background: "#eff6ff", border: "1px solid #bfdbfe",
-          borderRadius: "10px", padding: "10px 14px", fontSize: "13px", marginTop: "4px",
+          background: "#f9fafb", border: "1px solid #e5e7eb",
+          borderRadius: "10px", padding: "20px", textAlign: "center",
+          color: "#9ca3af", fontSize: "13px"
         }}>
-          <span style={{ fontWeight: "700", color: "#1e3a7a" }}>{seleccionado.id}</span>
-          {" — "}{seleccionado.alumno} · {seleccionado.curso}
+          No se encontraron casos activos para los involucrados de este incidente.
         </div>
+      ) : (
+        casosRelevantes.map((caso) => {
+          const estaSeleccionado = seleccionado?.id === caso.id;
+          return (
+            <div key={caso.id}
+              onClick={() => {
+                const nuevo = estaSeleccionado ? null : caso;
+                setSeleccionado(nuevo);
+                onSeleccionar?.(nuevo);
+              }}
+              style={{
+                border: estaSeleccionado ? "2px solid #1e3a7a" : "2px solid #e5e7eb",
+                borderRadius: "12px", padding: "14px 16px", cursor: "pointer",
+                background: estaSeleccionado ? "#eff6ff" : "white",
+                transition: "all 0.15s",
+              }}
+              onMouseEnter={e => { if (!estaSeleccionado) e.currentTarget.style.borderColor = "#bfdbfe"; }}
+              onMouseLeave={e => { if (!estaSeleccionado) e.currentTarget.style.borderColor = "#e5e7eb"; }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                <div>
+                  <span style={{ fontWeight: "700", color: "#1e3a7a", fontSize: "13px" }}>{caso.id}</span>
+                  <span style={{
+                    marginLeft: "8px", fontSize: "11px", fontWeight: "600",
+                    padding: "2px 8px", borderRadius: "99px",
+                    background: caso.estado === "abierto" ? "#dbeafe" : "#fef3c7",
+                    color: caso.estado === "abierto" ? "#1e40af" : "#92400e",
+                  }}>{caso.estado}</span>
+                </div>
+                {estaSeleccionado && (
+                  <span style={{ color: "#1e3a7a", fontWeight: "700", fontSize: "13px" }}>✓</span>
+                )}
+              </div>
+              <div style={{ fontSize: "13px", color: "#374151", marginTop: "4px", fontWeight: "500" }}>{caso.alumno}</div>
+              <div style={{ fontSize: "12px", color: "#6b7280", marginTop: "2px" }}>{caso.curso} · {caso.tipo}</div>
+            </div>
+          );
+        })
       )}
     </div>
   );
 }
-
 
 
 export function IncidentDetailModal({ incident, onClose, onAprobar, onRechazar, onRevertir }) {
@@ -114,6 +87,7 @@ export function IncidentDetailModal({ incident, onClose, onAprobar, onRechazar, 
   const [razonRechazo, setRazonRechazo] = useState("");
   const [razonError, setRazonError] = useState(false);
   const [showConfirmDeshacer, setShowConfirmDeshacer] = useState(false);
+  const [casoSeleccionado, setCasoSeleccionado] = useState(null);
 
   const isPendiente = incident.estado === "pendiente";
 
@@ -339,7 +313,7 @@ export function IncidentDetailModal({ incident, onClose, onAprobar, onRechazar, 
                 title="Cerrar — el incidente volverá a pendiente">✕</button>
             </div>
             <div className="p-6 flex flex-col gap-4">
-              <p className="text-sm text-gray-500">El incidente <strong>{incident.id}</strong> fue aprobado. Ahora puedes registrarlo como un caso nuevo o como un hito dentro de un caso existente.</p>
+              <p className="text-sm text-gray-500">El incidente <strong>{incident.id}</strong> fue aprobado. Ahora puedes elevarlo como un caso nuevo o asociarlo a un caso existente.</p>
               <div className="grid grid-cols-2 gap-4 mt-2">
                 <button onClick={() => setPaso("nuevo-caso")}
                   style={{ border: "2px solid #bfdbfe", borderRadius: "14px", padding: "24px 16px", background: "#eff6ff", cursor: "pointer", textAlign: "center", transition: "all 0.15s" }}
@@ -351,15 +325,15 @@ export function IncidentDetailModal({ incident, onClose, onAprobar, onRechazar, 
                   <div style={{ fontWeight: "700", color: "#1e3a7a", fontSize: "15px", marginBottom: "4px" }}>Nuevo caso</div>
                   <div style={{ fontSize: "12px", color: "#6b7280" }}>Abre un caso nuevo con este incidente como punto de partida</div>
                 </button>
-                <button onClick={() => setPaso("nuevo-hito")}
+                <button onClick={() => setPaso("caso-existente")}
                   style={{ border: "2px solid #bfdbfe", borderRadius: "14px", padding: "24px 16px", background: "#eff6ff", cursor: "pointer", textAlign: "center", transition: "all 0.15s" }}
                   onMouseEnter={e => e.currentTarget.style.background = "#dbeafe"}
                   onMouseLeave={e => e.currentTarget.style.background = "#eff6ff"}>
                   <svg style={{ width: "40px", height: "40px", margin: "0 auto 10px", display: "block", color: "#1e3a7a" }} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z" />
                   </svg>
-                  <div style={{ fontWeight: "700", color: "#1e3a7a", fontSize: "15px", marginBottom: "4px" }}>Hito en caso existente</div>
-                  <div style={{ fontSize: "12px", color: "#6b7280" }}>Agrega este incidente como hito dentro de un caso ya abierto</div>
+                  <div style={{ fontWeight: "700", color: "#1e3a7a", fontSize: "15px", marginBottom: "4px" }}>Incidente en caso existente</div>
+                  <div style={{ fontSize: "12px", color: "#6b7280" }}>Agrega este incidente dentro de un caso abierto</div>
                 </button>
               </div>
             </div>
@@ -428,58 +402,42 @@ export function IncidentDetailModal({ incident, onClose, onAprobar, onRechazar, 
           </>
         )}
 
-        {/* Paso 3b: Formulario nuevo hito */}
-        {paso === "nuevo-hito" && (
+        {/* Paso 3b: Formulario agregar incidente a caso existente */}
+        {paso === "caso-existente" && (
           <>
             <div className="flex items-center justify-between p-6 border-b-2 border-yellow-500">
               <div>
-                <button onClick={() => setPaso("destino")} className="text-xs text-blue-600 font-bold mb-1 hover:underline">← Volver</button>
-                <h2 className="text-xl font-bold text-blue-900"> Nuevo hito</h2>
+                <button onClick={() => { setPaso("destino"); setCasoSeleccionado(null); }} className="text-xs text-blue-600 font-bold mb-1 hover:underline">← Volver</button>
+                <h2 className="text-xl font-bold text-blue-900">Agregar a caso existente</h2>
               </div>
               <button onClick={handleCerrarSinGuardar}
                 className="ml-4 w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 text-lg transition-colors">✕</button>
             </div>
             <div className="overflow-y-auto p-6 flex flex-col gap-4">
-              <div style={{ background: "#fdf3d0", border: "1px solid #C8960C", borderRadius: "10px", padding: "10px 14px", fontSize: "13px", color: "#8a6308" }}>
-                Datos pre-cargados desde el incidente. Selecciona el caso y revisa antes de guardar.
-              </div>
-              <CasoBuscador />
-              <div className="grid grid-cols-2 gap-4">
-                <FormGroup label="Tipo de hito">
-                  <select className="w-full px-3 py-2 rounded-xl border-2 border-gray-200 focus:border-blue-500 focus:outline-none text-sm">
-                    <option>Nuevo incidente</option>
-                    <option>Entrevista apoderado</option>
-                    <option>Derivación externa</option>
-                    <option>Medida disciplinaria</option>
-                    <option>Plan reparatorio</option>
-                    <option>Otro</option>
-                  </select>
-                </FormGroup>
-                <FormGroup label="Fecha">
-                  <input type="date" defaultValue={incident.fecha}
-                    className="w-full px-3 py-2 rounded-xl border-2 border-gray-200 focus:border-blue-500 focus:outline-none text-sm" />
-                </FormGroup>
-              </div>
-              <FormGroup label="Descripción del hito">
-                <textarea defaultValue={incident.descripcion} rows={3}
-                  className="w-full px-3 py-2 rounded-xl border-2 border-gray-200 focus:border-blue-500 focus:outline-none text-sm resize-none" />
-              </FormGroup>
-              <FormGroup label="Evidencia (archivo)">
-                <input type="file" className="w-full text-sm text-gray-500" />
-              </FormGroup>
+              <p className="text-sm text-gray-500">
+                Casos activos donde participa alguno de los involucrados en este incidente.
+              </p>
+              <CasoBuscador involucrados={incident.involucrados ?? []} onSeleccionar={setCasoSeleccionado} />
             </div>
             <div className="p-6 border-t border-gray-100 flex gap-3 justify-end">
               <button onClick={handleCerrarSinGuardar}
                 className="px-5 py-2.5 rounded-xl border-2 border-gray-300 text-gray-600 font-bold text-sm hover:bg-gray-50 transition-colors">
                 Cancelar
               </button>
-              <button onClick={() => { alert("Hito agregado exitosamente.\n(Aquí se conectará al backend.)"); onClose(); }}
-                className="px-5 py-2.5 rounded-xl bg-blue-900 text-white font-bold text-sm hover:bg-blue-800 transition-colors">
-                Guardar hito
+              <button
+                disabled={!casoSeleccionado}
+                onClick={() => { alert("Incidente asociado al caso.\n(Aquí se conectará al backend.)"); onClose(); }}
+                className={`px-5 py-2.5 rounded-xl text-white font-bold text-sm transition-colors ${
+                  casoSeleccionado
+                    ? "bg-blue-900 hover:bg-blue-800"
+                    : "bg-blue-300 cursor-not-allowed"
+                }`}>
+                Asociar al caso
               </button>
             </div>
           </>
         )}
+
 
       </div>
     </div>

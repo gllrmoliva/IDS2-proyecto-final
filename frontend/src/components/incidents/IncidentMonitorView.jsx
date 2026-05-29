@@ -96,7 +96,7 @@ export function IncidentMonitorView() {
           <h1 className="text-2xl font-bold text-blue-900 font-serif">
             Monitoreo de Incidentes
           </h1>
-          <p className="text-sm text-gray-500 mt-0.5">Vista de coordinador — Colegio San Penquista</p>
+          <p className="text-sm text-gray-500 mt-0.5"> Colegio San Penquista</p>
         </div>
         <div className="flex gap-3">
           <Link

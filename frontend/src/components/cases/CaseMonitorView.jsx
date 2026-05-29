@@ -27,16 +27,15 @@ export function CaseMonitorView() {
       const matchCurso    = filters.curso    === "todos" || c.estudiantes.some(e => e.nombre_curso === filters.curso);
       return matchSearch && matchEstado && matchGravedad && matchCurso;
     }).sort((a, b) => {
-      const orden = { "abierto": 0, "en proceso": 1, "cerrado": 2 };
+      const orden = { "abierto": 0, "abierto": 1, "cerrado": 2 };
       return (orden[a.estado] ?? 9) - (orden[b.estado] ?? 9);
     });
   }, [cases, filters]);
 
   const stats = useMemo(() => ({
-    total:     cases.length,
-    abierto:   cases.filter(c => c.estado === "abierto").length,
-    enProceso: cases.filter(c => c.estado === "en proceso").length,
-    cerrado:   cases.filter(c => c.estado === "cerrado").length,
+    total:   cases.length,
+    abierto: cases.filter(c => c.estado === "abierto").length,
+    cerrado: cases.filter(c => c.estado === "cerrado").length,
   }), [cases]);
 
   if (loading) return <LoadingState mensaje="Cargando casos…" />;
@@ -48,7 +47,7 @@ export function CaseMonitorView() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-blue-900 font-serif">Monitoreo de Casos</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Vista de coordinador — Colegio San Penquista</p>
+          <p className="text-sm text-gray-500 mt-0.5">Colegio San Penquista</p>
         </div>
         <div className="flex gap-3">
           <Link to="/cases/new"
@@ -62,10 +61,9 @@ export function CaseMonitorView() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-3 gap-4">
         <StatCard label="Total"      value={stats.total}     color="text-blue-700" bg="bg-blue-50" border="border-blue-200" />
         <StatCard label="Abiertos"   value={stats.abierto}   color="text-blue-700" bg="bg-blue-50" border="border-blue-200" />
-        <StatCard label="En proceso" value={stats.enProceso} color="text-blue-700" bg="bg-blue-50" border="border-blue-200" />
         <StatCard label="Cerrados"   value={stats.cerrado}   color="text-blue-700" bg="bg-blue-50" border="border-blue-200" />
       </div>
 
