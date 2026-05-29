@@ -18,6 +18,7 @@ from app.database.minio_client import get_minio_client
 from app.schemas.cases import (CasoResponse, IncidentResponse, CasoCreate,
                                IncidentCreate)
 from app.api.deps import RoleChecker
+from app.core.config import Settings
 
 from minio.error import S3Error
 
@@ -130,9 +131,6 @@ async def create_case(
 # DOCUMENTOS / EVIDENCIAS
 ################################
 
-EXTENSIONES_PERMITIDAS = {"jpg", "jpeg", "png", "gif", "mp4", "mov", "pdf", "docx", "xlsx"}
-TAMANO_MAXIMO_MB = 100
-TAMANO_MAXIMO_BYTES = TAMANO_MAXIMO_MB * 1024 * 1024
 
 @router.post("/documentos/subir")
 async def subir_documento(
@@ -151,8 +149,8 @@ async def subir_documento(
     """
     # Validar extensión
     extension = archivo.filename.split(".")[-1].lower() if "." in archivo.filename else ""
-    if extension not in EXTENSIONES_PERMITIDAS:
-        raise HTTPException(status_code=400, detail=f"Extensión no permitida. Permitidas: {EXTENSIONES_PERMITIDAS}")
+    if extension not in Settings.EXTENSIONES_PERMITIDAS:
+        raise HTTPException(status_code=400, detail=f"Extensión no permitida. Permitidas: {Settings.EXTENSIONES_PERMITIDAS}")
 
     # Verificar que el hito existe
     result_hito = await db.execute(select(Hito).where(Hito.id_hito == id_hito))
@@ -178,8 +176,8 @@ async def subir_documento(
     # Leer contenido y validar tamaño
     contenido = await archivo.read()
     size_bytes = len(contenido)
-    if size_bytes > TAMANO_MAXIMO_BYTES:
-        raise HTTPException(status_code=400, detail=f"Archivo demasiado grande. Máximo {TAMANO_MAXIMO_MB}MB")
+    if size_bytes > Settings.TAMANO_MAXIMO_BYTES:
+        raise HTTPException(status_code=400, detail=f"Archivo demasiado grande. Máximo {Settings.TAMANO_MAXIMO_MB}MB")
 
     # usuario_tipo desde el token, no del cliente
     usuario_tipo = current_user.tipo_usuario
