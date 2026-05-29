@@ -453,7 +453,7 @@ function ModalHeader({ incident, onClose }) {
       </div>
       <button onClick={onClose}
         className="ml-4 w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 text-lg transition-colors">
-        
+        ✕
       </button>
     </div>
   );
