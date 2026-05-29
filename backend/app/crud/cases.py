@@ -10,10 +10,16 @@ from app.database.models import (
     EstadoIncidente,
     EstadoCaso,
     EstudianteCaso,
-    EstudianteIncidente, # Importación requerida para enrutar el ORM
+    EstudianteIncidente,
+    Documento# Importación requerida para enrutar el ORM
 )
-from app.schemas.cases import ElevacionIncidenteRequest
+from app.schemas.cases import ElevacionIncidenteRequest, IncidentCreate, EstudianteRolCreate
 from app.exceptions import EntityNotFoundError, BusinessLogicError
+import uuid
+from datetime import datetime
+from fastapi import UploadFile, HTTPException
+from app.crud.documents import upload_file_minio
+from typing import List
 
 
 async def get_incidents_for_user(db: AsyncSession, user):
@@ -48,7 +54,7 @@ async def get_incidents_for_user(db: AsyncSession, user):
 
 
 async def get_cases_for_user(db: AsyncSession, user):
-    # Eager loading 
+    # Eager loading
     stmt = select(Caso).options(
         # Cargar estudiantes del Caso
         selectinload(Caso.estudiantes)
@@ -58,7 +64,7 @@ async def get_cases_for_user(db: AsyncSession, user):
         # Cargar hitos del Caso, y dentro de los hitos, cargar documentos Y ESTUDIANTES
         selectinload(Caso.hitos).options(
             selectinload(Hito.documentos),
-            selectinload(Hito.estudiantes) # <--- ESTA LÍNEA FALTABA
+            selectinload(Hito.estudiantes)
         ),
     )
 
@@ -146,59 +152,76 @@ async def elevar_incidente(
     
     return incidente
 
-async def create_incident(db: AsyncSession, user, incident_in: IncidentCreate):
-
-    # obtener datos
-    stmt_estudiantes = select(Estudiante).where(
-        Estudiante.id_estudiante.in_(incident_in.estudiantes_ids)
-    )
-    result = await db.execute(stmt_estudiantes)
-    estudiantes_db = result.scalars().all()
-
-    if not estudiantes_db:
-        raise ValueError("No se encontraron estudiantes.")
-    
-    # crear objetos para documentos
-    documentos_db = [
-        Documento(
-            bucket_name=doc.bucket_name,
-            object_key=doc.object_key,
-            nombre_original=doc.nombre_original,
-            mime_type=doc.mime_type,
-            size_bytes=doc.size_bytes,
-            descripcion=doc.descripcion
-        )
-        for doc in incident_in.documentos
-    ]
-    
-    # crear el incidente como tal
+async def create_incidente_completo(
+    db: AsyncSession,
+    id_productor: str,
+    desc: str,
+    gravedad: str,
+    categoria: str,
+    fecha: datetime.date,
+    estado: str,
+    estudiantes_in: List[EstudianteRolCreate],
+    archivos: List[UploadFile],
+    minio_client
+):
+    # 1. Crear el incidente base
     nuevo_incidente = Incidente(
-        id_productor=user.id_usuario,
-        gravedad=incident_in.gravedad,
-        desc=incident_in.desc,
-        fecha=incident_in.fecha,
-        estado=incident_in.estado,
-        id_caso=None,
-        id_hito=None,
-        motivo_rechazo=None,
-        estudiantes=list(estudiantes_db),
-        documentos=documentos_db
+        id_productor=id_productor,
+        gravedad=gravedad,
+        desc=desc,
+        fecha=fecha,
+        categoria=categoria,
+        estado=estado
     )
-    
-    # añadir y obtener scope nuevamente (tema con conexión asíncrona)
     db.add(nuevo_incidente)
-    await db.commit()
-    
-    stmt = (
-        select(Incidente)
-        .where(Incidente.id_incidente == nuevo_incidente.id_incidente)
-        .options(
-            selectinload(Incidente.estudiantes),
-            selectinload(Incidente.documentos)
-        )
-    )
+    await db.flush() # Genera el id_incidente preliminar
 
-    result_final = await db.execute(stmt)
-    incidente_completo = result_final.scalar_one()
-    
-    return incidente_completo
+    # 2. Asociar los estudiantes con sus roles
+    for est_data in estudiantes_in:
+        nueva_asociacion = EstudianteIncidente(
+            id_estudiante=est_data.id_estudiante,
+            id_incidente=nuevo_incidente.id_incidente,
+            rol=est_data.rol
+        )
+        db.add(nueva_asociacion)
+
+    # 3. Procesar y subir archivos adjuntos (si existen)
+    for file in archivos:
+        contenido = await file.read()
+        size_bytes = len(contenido)
+        if size_bytes == 0:
+            continue
+
+        # Generar object_key único
+        ahora = datetime.now()
+        ext = file.filename.split(".")[-1] if "." in file.filename else "bin"
+        object_key = f"{ahora.year}/{ahora.month:02d}/{uuid.uuid4()}.{ext}"
+        bucket_name = "evidencias"
+
+        # Subir a MinIO (Tu función síncrona provista)
+        upload_file_minio(
+            client=minio_client,
+            bucket=bucket_name,
+            object_key=object_key,
+            contenido=contenido,
+            size_bytes=size_bytes,
+            mime_type=file.content_type
+        )
+
+        # Registrar en la tabla Documento
+        nuevo_doc = Documento(
+            bucket_name=bucket_name,
+            object_key=object_key,
+            nombre_original=file.filename,
+            mime_type=file.content_type,
+            size_bytes=size_bytes,
+            descripcion=f"Evidencia adjunta al incidente #{nuevo_incidente.id_incidente}",
+            id_hito=None,
+            id_incidente=nuevo_incidente.id_incidente # Vinculación explícita
+        )
+        db.add(nuevo_doc)
+
+    # 4. Confirmar toda la operación en la base de datos
+    await db.commit()
+    await db.refresh(nuevo_incidente)
+    return nuevo_incidente

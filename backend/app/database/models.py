@@ -128,7 +128,9 @@ class EstudianteIncidente(Base):
         ForeignKey("Incidente.id_incidente", ondelete="CASCADE", deferrable=True, initially="IMMEDIATE"), 
         primary_key=True
     )
-    rol: Mapped[Optional[RolInvolucrado]] = mapped_column()
+    rol: Mapped[Optional[RolInvolucrado]] = mapped_column(
+        Enum(RolInvolucrado, name="rol_involucrado", create_type=True),
+        nullable=False)
 
     estudiante: Mapped["Estudiante"] = relationship(back_populates="incidentes")
     incidente: Mapped["Incidente"] = relationship(back_populates="estudiantes")
@@ -352,7 +354,11 @@ class Incidente(Base):
     gravedad: Mapped[Gravedad] = mapped_column(nullable=False)
     desc: Mapped[str] = mapped_column(Text, nullable=False)
     fecha: Mapped[date] = mapped_column(Date, nullable=False)
-    categoria: Mapped[CategoriaConvivencia] = mapped_column(nullable=False)
+
+    categoria: Mapped[CategoriaConvivencia] = mapped_column(
+        Enum(CategoriaConvivencia, name="categoria_convivencia", create_type=True),
+        nullable=False
+    )
 
     id_caso: Mapped[Optional[int]] = mapped_column(
         Integer,
