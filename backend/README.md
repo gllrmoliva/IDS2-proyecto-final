@@ -13,7 +13,7 @@ PROJECT_NAME="PANOPTES"
 POSTGRES_USER=postgres
 POSTGRES_PASSWORD=postgresnosGustaMucho
 POSTGRES_DB=casos_db
-DATABASE_URL=postgresql://postgres:postgresnosGustaMucho@db:5432/casos_db
+DATABASE_URL=postgresql+asyncpg://postgres:postgresnosGustaMucho@db:5432/casos_db
 
 SECRET_KEY="6917cb1b7e5116b2c0055e5a4461c035b16a80e16428a83cde1e1325c169a9f7"
 ALGORITHM="HS256"

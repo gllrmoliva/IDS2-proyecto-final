@@ -1,5 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, or_
+from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from app.database.models import (
     Incidente,
@@ -145,3 +145,60 @@ async def elevar_incidente(
     await db.refresh(incidente)
     
     return incidente
+
+async def create_incident(db: AsyncSession, user, incident_in: IncidentCreate):
+
+    # obtener datos
+    stmt_estudiantes = select(Estudiante).where(
+        Estudiante.id_estudiante.in_(incident_in.estudiantes_ids)
+    )
+    result = await db.execute(stmt_estudiantes)
+    estudiantes_db = result.scalars().all()
+
+    if not estudiantes_db:
+        raise ValueError("No se encontraron estudiantes.")
+    
+    # crear objetos para documentos
+    documentos_db = [
+        Documento(
+            bucket_name=doc.bucket_name,
+            object_key=doc.object_key,
+            nombre_original=doc.nombre_original,
+            mime_type=doc.mime_type,
+            size_bytes=doc.size_bytes,
+            descripcion=doc.descripcion
+        )
+        for doc in incident_in.documentos
+    ]
+    
+    # crear el incidente como tal
+    nuevo_incidente = Incidente(
+        id_productor=user.id_usuario,
+        gravedad=incident_in.gravedad,
+        desc=incident_in.desc,
+        fecha=incident_in.fecha,
+        estado=incident_in.estado,
+        id_caso=None,
+        id_hito=None,
+        motivo_rechazo=None,
+        estudiantes=list(estudiantes_db),
+        documentos=documentos_db
+    )
+    
+    # añadir y obtener scope nuevamente (tema con conexión asíncrona)
+    db.add(nuevo_incidente)
+    await db.commit()
+    
+    stmt = (
+        select(Incidente)
+        .where(Incidente.id_incidente == nuevo_incidente.id_incidente)
+        .options(
+            selectinload(Incidente.estudiantes),
+            selectinload(Incidente.documentos)
+        )
+    )
+
+    result_final = await db.execute(stmt)
+    incidente_completo = result_final.scalar_one()
+    
+    return incidente_completo

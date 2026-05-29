@@ -23,7 +23,7 @@ export const MOCK_CASES = [
   {
     id_caso: 2,
     id_coordinador: "coord-001",
-    estado: "en proceso",
+    estado: "abierto",
     fecha_inicio: "2025-03-10",
     fecha_cierre: null,
     desc: "Alumno registra múltiples anotaciones de conducta y daños a dependencias del colegio.",
@@ -39,7 +39,7 @@ export const MOCK_CASES = [
   {
     id_caso: 3,
     id_coordinador: "coord-001",
-    estado: "en proceso",
+    estado: "abierto",
     fecha_inicio: "2025-03-15",
     fecha_cierre: null,
     desc: "Protocolo de acoso escolar activado. Involucra a 3 alumnos.",
@@ -74,7 +74,7 @@ export const MOCK_CASES = [
 ];
 
 export const CASE_FILTER_OPTIONS = {
-  estados: ["todos", "abierto", "en proceso", "cerrado"],
+  estados: ["todos", "abierto", "cerrado"],
   gravedades: ["todas", "baja", "media", "alta"],
   cursos: ["todos", "1°C", "2°B", "3°A", "4°D"],
 };

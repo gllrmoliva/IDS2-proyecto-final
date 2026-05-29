@@ -8,8 +8,9 @@ from datetime import timedelta
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
-from sqlalchemy.exc import IntegrityError
 
+from app.crud.cases import (get_incidents_for_user, get_cases_for_user,
+                            create_incident)
 from app.database.database import get_db
 
 from app.database.models import Usuario, Caso, Hito, Incidente, Documento, Estudiante, EstadoIncidente, Coordinador
@@ -24,6 +25,10 @@ from app.exceptions import EntityNotFoundError, BusinessLogicError
 from app.api.deps import RoleChecker, get_current_active_user
 from app.crud.cases import get_incidents_for_user, get_cases_for_user, elevar_incidente
 from app.database.minio_client import get_minio_client
+from app.schemas.cases import (CasoResponse, IncidentResponse, CasoCreate,
+                               IncidentCreate)
+from app.api.deps import RoleChecker
+
 from minio.error import S3Error
 
 router = APIRouter(prefix="/operate", tags=["Controlador de casos de convivencia"])
@@ -81,6 +86,31 @@ async def elevar_incidente_endpoint(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
+@router.post("/incidents/create",
+             status_code=status.HTTP_201_CREATED)
+async def create_incident_endpoint(
+    incident_in: IncidentCreate,
+    current_user: Annotated[
+        dict, Depends(RoleChecker(allowed_roles=["coordinador", "productor", "profesor_jefe"]))
+    ],
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Crea un nuevo incidente asociado al productor autenticado.
+    """
+    try:
+        # La lógica de creación y vinculación de estudiantes se delega al CRUD
+        incident_db = await create_incident(db, user=current_user, incident_in=incident_in)
+        return incident_db
+    except ValueError as e:
+        # no existen estudiantes
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        # constrains de la base de datos
+        await db.rollback()
+        raise HTTPException(status_code=422, detail=f"Error de integridad en base de datos: {str(e)}")
+
+
 ################################
 # HITOS
 ################################
@@ -99,6 +129,7 @@ async def read_cases(current_user: Annotated[
     a través de una dependencia en RoleChecker. 
     """
     return await get_cases_for_user(db, current_user) 
+
 
 @router.post("/cases/", response_model=CasoResponse)
 async def create_case(

@@ -13,6 +13,7 @@ from sqlalchemy import (
     Index,
     Table,
     Column,
+    Enum
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
@@ -333,7 +334,8 @@ class Hito(Base):
 class Incidente(Base):
     __tablename__ = "Incidente"
 
-    id_incidente: Mapped[int] = mapped_column(Integer, primary_key=True)
+    id_incidente: Mapped[int] = mapped_column(Integer, primary_key=True,
+                                              autoincrement=True)
     id_productor: Mapped[str] = mapped_column(
         String,
         ForeignKey("Productor.id_usuario", deferrable=True, initially="IMMEDIATE"),
@@ -354,7 +356,10 @@ class Incidente(Base):
         ForeignKey("Caso.id_caso", deferrable=True, initially="IMMEDIATE"),
     )
 
-    estado: Mapped[EstadoIncidente] = mapped_column(nullable=False)
+    estado: Mapped[EstadoIncidente] = mapped_column(
+        Enum(EstadoIncidente, name="estado_incidente", create_type=True),
+        nullable=False
+    )
     motivo_rechazo: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     __table_args__ = (
@@ -411,13 +416,22 @@ class Documento(Base):
     )
     size_bytes: Mapped[int] = mapped_column(BigInteger, nullable=False)
     descripcion: Mapped[str] = mapped_column(Text, nullable=False)
-    
-    id_hito: Mapped[int] = mapped_column(
+
+    id_hito: Mapped[Optional[int]] = mapped_column(
         Integer,
         ForeignKey("Hito.id_hito", deferrable=True, initially="IMMEDIATE"),
-        nullable=False,
+        nullable=True,
     )
+
     id_incidente: Mapped[Optional[int]] = mapped_column(
         Integer,
         ForeignKey("Incidente.id_incidente", deferrable=True, initially="IMMEDIATE"),
+        nullable=True,
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            "id_hito IS NOT NULL OR id_incidente IS NOT NULL",
+            name="chk_documento_origen_obligatorio",
+        ),
     )

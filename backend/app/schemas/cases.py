@@ -110,21 +110,20 @@ class DocumentoCreate(BaseModel):
     mime_type: str
     size_bytes: int
     descripcion: str
-
-
+    
 # Payload estructural para asignar el rol durante la creación
 class EstudianteRolCreate(BaseModel):
     id_estudiante: str
     rol: Optional[RolInvolucrado] = None
 
-
-class IncidenteCreate(BaseModel):
-    fecha: date
-    desc: str
+class IncidentCreate(BaseModel):
     gravedad: Gravedad
+    desc: str
+    fecha: date = Field(default_factory=date.today)
+    estado: EstadoIncidente = Field(default=EstadoIncidente.pendiente)
+    estudiantes_ids: List[str] = Field(..., min_length=1)   # estos son los RUT
     categoria: CategoriaConvivencia
-    estudiantes: List[EstudianteRolCreate] = []
-    documentos: List[DocumentoCreate] = []
+    documentos: List[DocumentoCreate] = Field(default_factory=list)
 
 
 class CasoCreate(BaseModel):

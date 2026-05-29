@@ -1,6 +1,13 @@
 import React, { useState } from 'react';
 import { BuscadorEstudiante } from '../shared/StudentSearch';
 
+const ROLES_INVOLUCRADO = [
+  'Autor/a',
+  'Afectado/a',
+  'Cómplice',
+  'Testigo / Espectador',
+];
+
 
 export default function FormularioIncidente() {
   const [formData, setFormData] = useState({
@@ -10,9 +17,21 @@ export default function FormularioIncidente() {
   });
 
   const [involucradoPrincipal, setInvolucradoPrincipal] = useState(null);
-  const [otrosInvolucrados, setOtrosInvolucrados] = useState([]);
+  const [rolPrincipal, setRolPrincipal] = useState(ROLES_INVOLUCRADO[0]);
+  const [otrosInvolucrados, setOtrosInvolucrados] = useState([]); // [{estudiante, rol}]
+  const [archivos, setArchivos] = useState([]);
   const [loading, setLoading] = useState(false);
   const [mensaje, setMensaje] = useState({ texto: '', tipo: '' });
+
+  const handleArchivos = (e) => {
+    const nuevos = Array.from(e.target.files);
+    setArchivos(prev => [...prev, ...nuevos]);
+    e.target.value = '';
+  };
+
+  const quitarArchivo = (index) => {
+    setArchivos(prev => prev.filter((_, i) => i !== index));
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -20,12 +39,12 @@ export default function FormularioIncidente() {
   };
 
   const agregarOtroInvolucrado = () => {
-    setOtrosInvolucrados([...otrosInvolucrados, null]);
+    setOtrosInvolucrados([...otrosInvolucrados, { estudiante: null, rol: ROLES_INVOLUCRADO[0] }]);
   };
 
-  const actualizarOtroInvolucrado = (index, estudiante) => {
+  const actualizarOtroInvolucrado = (index, campo, valor) => {
     const nuevos = [...otrosInvolucrados];
-    nuevos[index] = estudiante;
+    nuevos[index] = { ...nuevos[index], [campo]: valor };
     setOtrosInvolucrados(nuevos);
   };
 
@@ -36,7 +55,7 @@ export default function FormularioIncidente() {
   // IDs ya seleccionados para excluirlos de otros buscadores
   const idsSeleccionados = [
     involucradoPrincipal?.id_estudiante,
-    ...otrosInvolucrados.map(e => e?.id_estudiante),
+    ...otrosInvolucrados.map(e => e?.estudiante?.id_estudiante),
   ].filter(Boolean);
 
   const handleSubmit = async (e) => {
@@ -54,6 +73,7 @@ export default function FormularioIncidente() {
       //     fecha:       formData.fecha.split('T')[0],
       //     gravedad:    formData.gravedad,
       //     estudiantes: idsSeleccionados,
+      //     // roles: [rolPrincipal, ...otrosInvolucrados.map(o => o.rol)],
       //   }),
       // });
       // if (!res.ok) throw new Error();
@@ -63,6 +83,7 @@ export default function FormularioIncidente() {
         setFormData({ fecha: '', descripcion: '', gravedad: 'baja' });
         setInvolucradoPrincipal(null);
         setOtrosInvolucrados([]);
+        setArchivos([]);
         setLoading(false);
       }, 1000);
     } catch (error) {
@@ -122,8 +143,18 @@ export default function FormularioIncidente() {
           <BuscadorEstudiante
             placeholder="Buscar por nombre, RUT o curso…"
             onSeleccionar={setInvolucradoPrincipal}
-            excluir={otrosInvolucrados.map(e => e?.id_estudiante).filter(Boolean)}
+            excluir={otrosInvolucrados.map(e => e?.estudiante?.id_estudiante).filter(Boolean)}
           />
+          <div className="mt-2">
+            <label className="block text-xs font-semibold text-gray-500 mb-1">Rol en el incidente</label>
+            <select
+              value={rolPrincipal}
+              onChange={e => setRolPrincipal(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-gray-700 text-sm"
+            >
+              {ROLES_INVOLUCRADO.map(r => <option key={r} value={r}>{r}</option>)}
+            </select>
+          </div>
           <p className="text-xs text-gray-400 mt-1">El sistema cruzará este dato con el Sistema Curricular externo.</p>
         </div>
 
@@ -131,17 +162,24 @@ export default function FormularioIncidente() {
         {otrosInvolucrados.length > 0 && (
           <div className="space-y-3">
             <label className="block text-sm font-semibold text-gray-700">Otros Involucrados</label>
-            {otrosInvolucrados.map((_, index) => (
+            {otrosInvolucrados.map((inv, index) => (
               <div key={index} className="flex gap-2 items-start">
-                <div className="flex-1">
+                <div className="flex-1 flex flex-col gap-2">
                   <BuscadorEstudiante
                     placeholder="Buscar por nombre, RUT o curso…"
-                    onSeleccionar={(est) => actualizarOtroInvolucrado(index, est)}
+                    onSeleccionar={(est) => actualizarOtroInvolucrado(index, 'estudiante', est)}
                     excluir={[
                       involucradoPrincipal?.id_estudiante,
-                      ...otrosInvolucrados.filter((_, i) => i !== index).map(e => e?.id_estudiante),
+                      ...otrosInvolucrados.filter((_, i) => i !== index).map(e => e?.estudiante?.id_estudiante),
                     ].filter(Boolean)}
                   />
+                  <select
+                    value={inv?.rol ?? ROLES_INVOLUCRADO[0]}
+                    onChange={e => actualizarOtroInvolucrado(index, 'rol', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-gray-700 text-sm"
+                  >
+                    {ROLES_INVOLUCRADO.map(r => <option key={r} value={r}>{r}</option>)}
+                  </select>
                 </div>
                 <button
                   type="button"
@@ -173,6 +211,30 @@ export default function FormularioIncidente() {
             placeholder="Describa de forma objetiva lo sucedido, indicando las acciones observadas..."
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-gray-700 resize-none"
           />
+        </div>
+
+        {/* Evidencia */}
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-1">Evidencia</label>
+          <label className="flex items-center gap-2 px-4 py-2.5 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition text-sm text-gray-500">
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M18.375 12.739l-7.693 7.693a4.5 4.5 0 01-6.364-6.364l10.94-10.94A3 3 0 1119.5 7.372L8.552 18.32m.009-.01l-.01.01m5.699-9.941l-7.81 7.81a1.5 1.5 0 002.112 2.13" />
+            </svg>
+            Adjuntar archivo(s)
+            <input type="file" multiple onChange={handleArchivos} className="hidden" />
+          </label>
+          {archivos.length > 0 && (
+            <ul className="mt-2 flex flex-col gap-1">
+              {archivos.map((archivo, i) => (
+                <li key={i} className="flex items-center justify-between px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700">
+                  <span className="truncate max-w-xs">{archivo.name}</span>
+                  <button type="button" onClick={() => quitarArchivo(i)}
+                    className="ml-2 text-red-400 hover:text-red-600 font-bold flex-shrink-0">✕</button>
+                </li>
+              ))}
+            </ul>
+          )}
+          <p className="text-xs text-gray-400 mt-1">Puedes adjuntar imágenes, documentos u otros archivos.</p>
         </div>
 
         <div className="flex justify-end pt-2">
