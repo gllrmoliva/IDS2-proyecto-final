@@ -3,8 +3,25 @@
 // Incluye una barra de navegación superior con acceso a incidentes y casos.
 
 import { Outlet, NavLink } from "react-router-dom";
+import { useState, useEffect } from "react";
 
 export function MainLayout() {
+  // Estado para manejar el identificador visual del sprint
+  const [identidad, setIdentidad] = useState("Cargando usuario...");
+
+  useEffect(() => {
+    try {
+      const token = sessionStorage.getItem("panoptes_token");
+      if (token) {
+        const payload = JSON.parse(atob(token.split(".")[1]));
+        // Muestra el email (sub) o podrías concatenar el rol: `${payload.sub} (${payload.tipo_usuario})`
+        setIdentidad(payload.sub);
+      }
+    } catch (e) {
+      console.warn("No se pudo decodificar el token para el layout", e);
+    }
+  }, []);
+
   return (
     <div className="min-h-screen bg-slate-100">
 
@@ -53,8 +70,18 @@ export function MainLayout() {
           Casos
         </NavLink>
 
-        {/* Botón cerrar sesión (AUN NO FUNCIONA) */}
-        <div style={{ marginLeft: "auto" }}>
+        {/* Contenedor Flex para Identidad + Botón */}
+        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: "16px" }}>
+          
+          {/* Identificador de Rol/Usuario */}
+          <span style={{ 
+            color: "rgba(255,255,255,0.85)", 
+            fontSize: "13px", 
+            fontWeight: "500" 
+          }}>
+            {identidad}
+          </span>
+
           <button
             onClick={() => alert("Cerrar sesión no está implementado aún.")}
             style={{

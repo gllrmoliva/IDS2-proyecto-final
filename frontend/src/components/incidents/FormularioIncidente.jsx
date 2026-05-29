@@ -32,7 +32,7 @@ export default function FormularioIncidente() {
   const [formData, setFormData] = useState({
     fecha: '',
     descripcion: '',
-    gravedad: 'baja',
+    gravedad: 'leve',
     categoria: 'violencia_fisica',
   });
 
@@ -84,41 +84,63 @@ export default function FormularioIncidente() {
     setMensaje({ texto: '', tipo: '' });
 
     try {
-      if (USE_MOCK) {
-        await new Promise(r => setTimeout(r, 800));
-        setMensaje({ texto: 'Incidente registrado exitosamente en Panoptes.', tipo: 'success' });
-        setFormData({ fecha: '', descripcion: '', gravedad: 'baja', categoria: 'violencia_fisica' });
-        setInvolucradoPrincipal(null);
-        setOtrosInvolucrados([]);
-        setArchivos([]);
-        setLoading(false);
-        return;
+      if (USE_MOCK) { /* ... lógica de mock igual ... */ }
+
+      const token = sessionStorage.getItem('panoptes_token') || activeToken; // Asegura tener el token
+
+      // 1. Usar FormData
+      const formDataToSend = new FormData();
+      
+      formDataToSend.append("desc", formData.descripcion);
+      formDataToSend.append("fecha", formData.fecha.split('T')[0]);
+      formDataToSend.append("gravedad", formData.gravedad); // Asegúrate de que sea 'leve', 'grave' o 'muy_grave'
+      formDataToSend.append("categoria", formData.categoria);
+      
+      // 2. Construir el arreglo de estudiantes con roles según el esquema EstudianteRolCreate
+      const estudiantesPayload = [];
+      
+      if (involucradoPrincipal?.id_estudiante) {
+        estudiantesPayload.push({
+          id_estudiante: involucradoPrincipal.id_estudiante,
+          rol: rolPrincipal || null
+        });
       }
+      
+      otrosInvolucrados.forEach(inv => {
+        if (inv?.estudiante?.id_estudiante) {
+          estudiantesPayload.push({
+            id_estudiante: inv.estudiante.id_estudiante,
+            rol: inv.rol || null
+          });
+        }
+      });
 
-      //  Fetch
-      // POST /api/operate/incidents/create
-      // Payload: IncidentCreate { desc, fecha, gravedad, categoria, estudiantes_ids }
-      const token = sessionStorage.getItem('panoptes_token');
-      const payload = {
-        desc:            formData.descripcion,
-        fecha:           formData.fecha.split('T')[0],
-        gravedad:        formData.gravedad,
-        categoria:       formData.categoria,
-        estudiantes_ids: idsSeleccionados,   // lista de RUTs
-      };
+      // 3. Serializar y adjuntar EXACTAMENTE con la llave que pide tu dependencia de FastAPI
+      formDataToSend.append("estudiantes_json", JSON.stringify(estudiantesPayload));
 
+      // 4. Adjuntar archivos
+      archivos.forEach(file => {
+          formDataToSend.append("archivos", file);
+      });
+
+      // 5. Enviar el fetch (sin Content-Type manual)
       const res = await fetch('/api/operate/incidents/create', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify(payload),
+        body: formDataToSend,
       });
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        throw new Error(err.detail ?? `Error ${res.status}`);
+        // Forzamos a que el arreglo de errores de FastAPI se convierta en un string legible
+        const detalleError = Array.isArray(err.detail) 
+          ? JSON.stringify(err.detail, null, 2) 
+          : err.detail;
+          
+        console.error("Detalle del error 422:", detalleError);
+        throw new Error(detalleError ?? `Error ${res.status}`);
       }
 
       setMensaje({ texto: 'Incidente registrado exitosamente en Panoptes.', tipo: 'success' });
@@ -128,7 +150,7 @@ export default function FormularioIncidente() {
       setArchivos([]);
       setLoading(false);
     } catch (error) {
-      setMensaje({ texto: 'Error al conectar con el servidor.', tipo: 'error' });
+      setMensaje({ texto: `Error: ${error.message}`, tipo: 'error' });
       setLoading(false);
     }
   };
@@ -186,9 +208,9 @@ export default function FormularioIncidente() {
               onChange={handleChange}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-gray-700"
             >
-              <option value="baja">Baja</option>
-              <option value="media">Media</option>
-              <option value="alta">Alta</option>
+              <option value="leve">Leve</option>
+              <option value="grave">Grave</option>
+              <option value="muy_grave">Muy grave</option>
             </select>
           </div>
         </div>

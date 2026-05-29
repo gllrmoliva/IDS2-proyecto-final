@@ -88,6 +88,7 @@ async def elevar_incidente_endpoint(
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
 
 
+# TODO: Si esto es una dependencia, debería ir en deps.py
 def form_to_incident_schema(
     gravedad: Gravedad = Form(...),
     desc: str = Form(...),
@@ -128,30 +129,37 @@ def form_to_incident_schema(
         raise HTTPException(status_code=400, detail=f"Error en los datos del formulario: {str(e)}")
 
 
-@router.post("/incident/create", status_code=status.HTTP_201_CREATED, response_model=IncidentCreate)
+@router.post("/incidents/create", status_code=status.HTTP_201_CREATED, response_model=IncidentCreate)
 async def crear_nuevo_incidente(
     incident_in: IncidentCreate = Depends(form_to_incident_schema),
     archivos: List[UploadFile] = File(default=[]),
     db: AsyncSession = Depends(get_db),
-    minio_client=Depends(get_minio_client),
+    # Quitamos minio_client de aquí
     current_user: Annotated[
-        dict, Depends(RoleChecker(allowed_roles=["coordinador", "productor", "profesor_jefe"]))
+        dict, Depends(RoleChecker(allowed_roles=["productor", "profesor_jefe"]))
     ] = None
 ):
+    # Instanciamos el cliente MinIO manualmente usando el rol del usuario
+    try:
+        minio_client = get_minio_client(usuario=current_user.tipo_usuario)
+    except ValueError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
     try:
         # Pasamos los datos del esquema a tu función creadora
         nuevo_incidente = await create_incidente_completo(
             db=db,
-            id_productor=current_user.id_usuario,
+            id_productor=current_user.id_usuario, 
             desc=incident_in.desc,
             gravedad=incident_in.gravedad.value,
             categoria=incident_in.categoria.value,
             fecha=incident_in.fecha,
             estado=incident_in.estado.value,
             estudiantes_in=incident_in.estudiantes, 
-            archivos=archivos, # Se los pasamos a tu función para que los suba a MinIO
-            minio_client=minio_client
+            archivos=archivos, 
+            minio_client=minio_client # Le pasamos la instancia que acabamos de crear
         )
+    # ... resto de tu código ...
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error interno al crear el incidente: {str(e)}")
 

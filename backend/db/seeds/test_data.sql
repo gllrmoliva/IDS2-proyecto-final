@@ -5,10 +5,10 @@
 
 -- 1. IDENTIDADES (Usuario)
 INSERT INTO "Usuario" ("id_usuario", "nombre", "email", "tipo_usuario", "es_activo", "hashed_password") VALUES
-('11111111-1', 'Ana Silva (Coordinadora)', 'ana.silva@colegio.cl', 'coordinador', true, '$argon2id$v=19$m=65536,t=3,p=4$v3g6v5o560tjei3d67pLsQ$vOG7SLI/xcihRYXn22f7YP0W1WbKNiEtmK9Y7b/ICcs'), -- testpassword
-('22222222-2', 'Carlos Inspector (Productor)', 'carlos.insp@colegio.cl', 'productor', true, '$argon2id$v=19$m=65536,t=3,p=4$BflesKr+5JiHE5V+bRbFqA$2mezGOPsMDqHO16+DSVuUB58rK2IH46fdRVozwspmwk'), -- testpassword1
-('33333333-3', 'Roberto Profesor Inspector (Productor)', 'roberto.insp@colegio.cl', 'productor', true, '$argon2id$v=19$m=65536,t=3,p=4$FyiE2qJzZT1ZpHoTEYJGMA$3dsMiTCWLpacLN8kjenmWs3etybelYO1Pw4m0zfm5Hk'), -- testpassword2
-('44444444-4', 'María Profesora (Profesor Jefe)', 'maria.prof@colegio.cl', 'profesor_jefe', true, '$argon2id$v=19$m=65536,t=3,p=4$UzwZMput7ak/9hFKEl+5Kw$XnnDqt1P9maO8I1p+EX9EuQyhs76Lta4Hou04TjoXOM'), -- testpassowrd3
+('11111111-1', 'Ana Silva', 'ana.silva@colegio.cl', 'coordinador', true, '$argon2id$v=19$m=65536,t=3,p=4$v3g6v5o560tjei3d67pLsQ$vOG7SLI/xcihRYXn22f7YP0W1WbKNiEtmK9Y7b/ICcs'), -- testpassword
+('22222222-2', 'Carlos Sanhueza', 'carlos.insp@colegio.cl', 'productor', true, '$argon2id$v=19$m=65536,t=3,p=4$BflesKr+5JiHE5V+bRbFqA$2mezGOPsMDqHO16+DSVuUB58rK2IH46fdRVozwspmwk'), -- testpassword1
+('33333333-3', 'Roberto Delgado', 'roberto.insp@colegio.cl', 'productor', true, '$argon2id$v=19$m=65536,t=3,p=4$FyiE2qJzZT1ZpHoTEYJGMA$3dsMiTCWLpacLN8kjenmWs3etybelYO1Pw4m0zfm5Hk'), -- testpassword2
+('44444444-4', 'María Hernández', 'maria.prof@colegio.cl', 'profesor_jefe', true, '$argon2id$v=19$m=65536,t=3,p=4$UzwZMput7ak/9hFKEl+5Kw$XnnDqt1P9maO8I1p+EX9EuQyhs76Lta4Hou04TjoXOM'), -- testpassword3
 ('55555555-5', 'Usuario Eliminado', 'borrado@colegio.cl', 'productor', false, '$argon2id$v=19$m=65536,t=3,p=4$K03wg1do6eLZ9TvNPIChLg$ezRhAEPXdpPd5DuCO3NQnoL5wdZzG7H5IXWmREFauRk'); -- nosGustaMucho
 
 -- 2. TPT SUBCLASSES (Domain Roles)
@@ -27,8 +27,8 @@ INSERT INTO "Curso" ("id_curso", "nombre_curso", "id_pj") VALUES
 (1, '1 Medio A', '44444444-4');
 
 INSERT INTO "Estudiante" ("id_estudiante", "nombre", "id_curso") VALUES
-('1000000-1', 'Juanito Pérez', 1),
-('1000001-2', 'Pedrito Gómez', 1),
+('1000000-1', 'Juan Pérez', 1),
+('1000001-2', 'Pedro Gómez', 1),
 ('1000003-3', 'Diego López', 1);
 
 -- Casos (Se ajusta gravedad a la nueva nomenclatura y se añade categoría)
