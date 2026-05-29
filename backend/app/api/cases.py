@@ -1,23 +1,32 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-
+from fastapi import APIRouter, Depends, HTTPException, status, Form, UploadFile, File
+from pydantic import ValidationError
 from typing import List, Annotated
+import json
 
+from datetime import date
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.crud.cases import (get_incidents_for_user, get_cases_for_user,
-                            create_incident)
+                            create_incidente_completo)
+
+from app.database.minio_client import get_minio_client
 
 from app.database.database import get_db
-from app.database.models import Caso, Coordinador
+from app.database.models import (
+    Incidente, CategoriaConvivencia, Gravedad, EstadoIncidente,
+    EstudianteIncidente, Estudiante, Coordinador
+)
 
 from app.schemas.cases import (
     CasoCreate,
     CasoResponse,
     IncidentResponse,
     ElevacionIncidenteRequest,
-    IncidentCreate,
+    EstudianteRolCreate,
+    IncidentCreate
+
 )
 
 from app.exceptions import EntityNotFoundError, BusinessLogicError
@@ -79,30 +88,89 @@ async def elevar_incidente_endpoint(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
-@router.post("/incidents/create",
-             status_code=status.HTTP_201_CREATED)
-async def create_incident_endpoint(
-    incident_in: IncidentCreate,
+def form_to_incident_schema(
+    gravedad: Gravedad = Form(...),
+    desc: str = Form(...),
+    fecha: date = Form(default_factory=date.today),
+    categoria: CategoriaConvivencia = Form(...),
+    estudiantes_json: str = Form(
+        ..., 
+        description="""Lista JSON. Ej: [{"id_estudiante": "123", "rol": "autor_agresor"}]"""
+    )
+) -> IncidentCreate:
+    
+    # 1. Procesamos el JSON de estudiantes
+    try:
+        estudiantes_data = json.loads(estudiantes_json)
+        if not isinstance(estudiantes_data, list):
+            raise ValueError("El campo estudiantes_json debe ser una lista.")
+        
+        estudiantes_in = [EstudianteRolCreate(**est) for est in estudiantes_data]
+        
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="Formato JSON inválido en estudiantes_json.")
+    except (ValueError, ValidationError) as e:
+        raise HTTPException(status_code=400, detail=f"Error validando estudiantes: {str(e)}")
+
+    # 2. Retornamos tu esquema Pydantic listo y validado
+    try:
+        return IncidentCreate(
+            gravedad=gravedad,
+            desc=desc,
+            fecha=fecha,
+            categoria=categoria,
+            estudiantes=estudiantes_in
+            # 'estado' tomará tu default (EstadoIncidente.pendiente)
+            # 'documentos' tomará tu default_factory (lista vacía)
+        )
+    except ValidationError as e:
+        # Esto atrapará si, por ejemplo, min_length=1 falla porque la lista está vacía
+        raise HTTPException(status_code=400, detail=f"Error en los datos del formulario: {str(e)}")
+
+
+@router.post("/incident/create", status_code=status.HTTP_201_CREATED, response_model=IncidentCreate)
+async def crear_nuevo_incidente(
+    incident_in: IncidentCreate = Depends(form_to_incident_schema),
+    archivos: List[UploadFile] = File(default=[]),
+    db: AsyncSession = Depends(get_db),
+    minio_client=Depends(get_minio_client),
     current_user: Annotated[
         dict, Depends(RoleChecker(allowed_roles=["coordinador", "productor", "profesor_jefe"]))
-    ],
-    db: AsyncSession = Depends(get_db)
+    ] = None
 ):
-    """
-    Crea un nuevo incidente asociado al productor autenticado.
-    """
     try:
-        # La lógica de creación y vinculación de estudiantes se delega al CRUD
-        incident_db = await create_incident(db, user=current_user, incident_in=incident_in)
-        return incident_db
-    except ValueError as e:
-        # no existen estudiantes
-        raise HTTPException(status_code=400, detail=str(e))
+        # Pasamos los datos del esquema a tu función creadora
+        nuevo_incidente = await create_incidente_completo(
+            db=db,
+            id_productor=current_user.id_usuario,
+            desc=incident_in.desc,
+            gravedad=incident_in.gravedad.value,
+            categoria=incident_in.categoria.value,
+            fecha=incident_in.fecha,
+            estado=incident_in.estado.value,
+            estudiantes_in=incident_in.estudiantes, 
+            archivos=archivos, # Se los pasamos a tu función para que los suba a MinIO
+            minio_client=minio_client
+        )
     except Exception as e:
-        # constrains de la base de datos
-        await db.rollback()
-        raise HTTPException(status_code=422, detail=f"Error de integridad en base de datos: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error interno al crear el incidente: {str(e)}")
 
+    # 3. Fetch final con Eager Loading para armar la respuesta
+    stmt = select(Incidente).options(
+        selectinload(Incidente.productor),
+        selectinload(Incidente.documentos),
+        selectinload(Incidente.estudiantes)
+            .selectinload(EstudianteIncidente.estudiante)
+            .selectinload(Estudiante.curso)
+    ).where(Incidente.id_incidente == nuevo_incidente.id_incidente)
+    
+    result = await db.execute(stmt)
+    incidente_cargado = result.scalar_one_or_none()
+    
+    if not incidente_cargado:
+        raise HTTPException(status_code=404, detail="Error al recuperar el incidente creado.")
+
+    return incidente_cargado
 
 ################################
 # HITOS

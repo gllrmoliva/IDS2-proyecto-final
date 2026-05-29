@@ -50,9 +50,9 @@ INSERT INTO "Incidente" ("id_incidente", "id_productor", "gravedad", "categoria"
 (4, '22222222-2', 'leve', 'violencia_fisica', 'Alumno empujó a su compañero del primer piso.', NULL, NULL, 'rechazado', 'Falta de pruebas', '2025-05-10'); -- Rechazado y no elevado
 
 -- Documentos
-INSERT INTO "Documento" ("id_doc", "bucket_name", "object_key", "nombre_original", "mime_type", "size_bytes", "descripcion", "id_hito", "id_incidente") VALUES
-(1, 'casos-docs', '2026/05/uuid-1234-5678.pdf', 'acta_entrevista.pdf', 'application/pdf', 1048576, 'Acta firmada por apoderado', 1, NULL),
-(2, 'incidentes-docs', '2026/05/uuid-abcd-efgh.jpg', 'foto_pizarra.jpg', 'image/jpeg', 2048000, 'Foto de la evidencia en clase', 1, 2);
+INSERT INTO "Documento" ("id_doc", "bucket_name", "object_key", "nombre_original", "mime_type", "size_bytes", "descripcion", "id_hito", "id_incidente", "id_caso") VALUES
+(1, 'casos-docs', '2026/05/uuid-1234-5678.pdf', 'acta_entrevista.pdf', 'application/pdf', 1048576, 'Acta firmada por apoderado', 1, NULL, NULL),
+(2, 'incidentes-docs', '2026/05/uuid-abcd-efgh.jpg', 'foto_pizarra.jpg', 'image/jpeg', 2048000, 'Foto de la evidencia en clase', 1, NULL, NULL);
 
 -- (Mappings M:N)
 

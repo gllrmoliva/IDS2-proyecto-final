@@ -139,8 +139,13 @@ CREATE TABLE "Documento" (
   "mime_type" varchar NOT NULL,
   "size_bytes" bigint NOT NULL,
   "descripcion" text NOT NULL,
-  "id_hito" integer NOT NULL,
+  "id_hito" integer,
+  "id_caso" integer,
   "id_incidente" integer
+
+  CONSTRAINT chk_doc_pertenencia CHECK (
+      num_nonnulls(id_hito, id_caso, id_incidente) = 1
+  )
 );
 
 CREATE TABLE "Estudiante_Caso" (
@@ -180,6 +185,7 @@ ALTER TABLE "Incidente" ADD FOREIGN KEY ("id_caso") REFERENCES "Caso" ("id_caso"
 ALTER TABLE "Incidente" ADD FOREIGN KEY ("id_caso_acumulado") REFERENCES "Caso" ("id_caso") DEFERRABLE INITIALLY IMMEDIATE;
 ALTER TABLE "Documento" ADD FOREIGN KEY ("id_hito") REFERENCES "Hito" ("id_hito") DEFERRABLE INITIALLY IMMEDIATE;
 ALTER TABLE "Documento" ADD FOREIGN KEY ("id_incidente") REFERENCES "Incidente" ("id_incidente") DEFERRABLE INITIALLY IMMEDIATE;
+ALTER TABLE "Documento" ADD FOREIGN KEY ("id_caso") REFERENCES "Caso" ("id_caso") DEFERRABLE INITIALLY IMMEDIATE;
 ALTER TABLE "Estudiante_Caso" ADD FOREIGN KEY ("id_estudiante") REFERENCES "Estudiante" ("id_estudiante") ON DELETE CASCADE DEFERRABLE INITIALLY IMMEDIATE;
 ALTER TABLE "Estudiante_Caso" ADD FOREIGN KEY ("id_caso") REFERENCES "Caso" ("id_caso") ON DELETE CASCADE DEFERRABLE INITIALLY IMMEDIATE;
 ALTER TABLE "Estudiante_Incidente" ADD FOREIGN KEY ("id_estudiante") REFERENCES "Estudiante" ("id_estudiante") ON DELETE CASCADE DEFERRABLE INITIALLY IMMEDIATE;
