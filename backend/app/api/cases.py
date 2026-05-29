@@ -12,8 +12,18 @@ from sqlalchemy.orm import selectinload
 from app.crud.cases import (get_incidents_for_user, get_cases_for_user,
                             create_incident)
 from app.database.database import get_db
-from app.database.models import (Caso, Hito, Incidente, Documento,
-                                 Coordinador)
+
+from app.database.models import Usuario, Caso, Hito, Incidente, Documento, Estudiante, EstadoIncidente, Coordinador
+from app.schemas.cases import CasoResponse, IncidentResponse, CasoCreate, IncidenteCreate
+from app.schemas.cases import (
+    CasoCreate, 
+    CasoResponse, 
+    IncidentResponse, 
+    ElevacionIncidenteRequest
+)
+from app.exceptions import EntityNotFoundError, BusinessLogicError
+from app.api.deps import RoleChecker, get_current_active_user
+from app.crud.cases import get_incidents_for_user, get_cases_for_user, elevar_incidente
 from app.database.minio_client import get_minio_client
 from app.schemas.cases import (CasoResponse, IncidentResponse, CasoCreate,
                                IncidentCreate)
@@ -43,6 +53,38 @@ async def read_incidents(
     """
     # Data scoping (qué usuario ve qué) es trabajo de lógica CRUD
     return await get_incidents_for_user(db, current_user)
+
+@router.post("/incidents/{id_incidente}/elevar", response_model=IncidentResponse)
+async def elevar_incidente_endpoint(
+    id_incidente: int,
+    payload: ElevacionIncidenteRequest,
+    current_user: Annotated[
+        dict, Depends(RoleChecker(allowed_roles=["coordinador"]))
+    ],
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Eleva un Incidente pendiente. 
+    Solo permitido para el rol 'coordinador'.
+    Gatilla la creación de un Nuevo Caso (Evento Originario) o lo anexa a uno existente (Acumulación).
+    """
+    try:
+        # Extraer id_usuario dependiendo si current_user es un dict o un modelo Pydantic/SQLAlchemy
+        id_coordinador = current_user.get("id_usuario") if isinstance(current_user, dict) else current_user.id_usuario
+        
+        incidente_actualizado = await elevar_incidente(
+            db=db, 
+            id_incidente=id_incidente, 
+            id_coordinador=id_coordinador, 
+            payload=payload
+        )
+        return incidente_actualizado
+        
+    except EntityNotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        
+    except BusinessLogicError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
 @router.post("/incidents/create",
