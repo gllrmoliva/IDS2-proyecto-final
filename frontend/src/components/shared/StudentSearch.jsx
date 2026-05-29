@@ -21,24 +21,42 @@ export function BuscadorEstudiante({ placeholder, onSeleccionar, excluir = [], e
 
     const fetchEstudiantes = async () => {
       try {
-        // TODO: Ajusta la obtención del token según cómo se maneje la sesión en Panoptes
-        const token = localStorage.getItem("token"); 
-
-        // El prefijo asume una estructura estándar; ajústalo si FastAPI se levanta en un host distinto
-        const response = await fetch("/api/students/get_all", {
-          method: 'GET',
-          headers: {
-            "Authorization": `Bearer ${token}`,
-            "Content-Type": "application/json"
+        // Obtener token — si no hay en sesión, hacer auto-login (mismo patrón que useIncidents)
+        let token = sessionStorage.getItem("panoptes_token");
+        if (!token) {
+          const loginRes = await fetch("/api/auth/token", {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: new URLSearchParams({
+              username: "ana.silva@colegio.cl",
+              password: "testpassword",
+            }),
+          });
+          if (loginRes.ok) {
+            const loginData = await loginRes.json();
+            token = loginData.access_token;
+            sessionStorage.setItem("panoptes_token", token);
           }
-        });
-
-        if (!response.ok) {
-          throw new Error("No se pudieron cargar los estudiantes");
         }
 
+        const response = await fetch("/api/students/get_all", {
+          method: "GET",
+          headers: {
+            "Authorization": `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        });
+
+        if (!response.ok) throw new Error("No se pudieron cargar los estudiantes");
+
         const data = await response.json();
-        setLista(data);
+        // El backend devuelve Estudiante con relación curso cargada:
+        // { id_estudiante, nombre, curso: { id_curso, nombre_curso, id_pj } }
+        setLista(data.map(e => ({
+          id_estudiante: e.id_estudiante,
+          nombre:        e.nombre,
+          nombre_curso:  e.curso?.nombre_curso ?? "—",
+        })));
       } catch (err) {
         console.error(err);
         setError("Error al cargar datos del backend.");

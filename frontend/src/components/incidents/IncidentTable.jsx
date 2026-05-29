@@ -4,6 +4,21 @@
 import { GravedadBadge, EstadoBadge } from "./IncidentBadges";
 import { formatFecha } from "../../utils/dateUtils";
 
+const LABEL_CATEGORIA = {
+  violencia_fisica: "Violencia física",
+  violencia_psicologica_acoso: "Violencia psicológica / Acoso",
+  disrupcion_desacato: "Disrupción / Desacato",
+  probidad_fraude: "Probidad / Fraude",
+  dano_infraestructura_bienes: "Daño a infraestructura o bienes",
+  conductas_riesgo_sustancias: "Conductas de riesgo / Sustancias",
+  privacidad_tecnologia: "Privacidad / Tecnología",
+  sexualidad_obscenidad: "Sexualidad / Obscenidad",
+  valores_institucionales: "Valores institucionales",
+  otro: "Otro",
+};
+const labelTipo = (inc) =>
+  LABEL_CATEGORIA[inc.categoria] ?? inc.tipo ?? "—";
+
 
 // incidents: array de incidentes a mostrar (ya filtrados)
 // onSelect: función que se llama al hacer click en un incidente, recibe el objeto incidente completo
@@ -47,13 +62,11 @@ export function IncidentTable({ incidents, onSelect }) {
                 <br />
                 <span className="text-xs text-gray-400">{inc.alumno.curso}</span>
               </td>
-              <td className="px-4 py-3 text-gray-700">{inc.tipo}</td>
+              <td className="px-4 py-3 text-gray-700">{labelTipo(inc)}</td>
               <td className="px-4 py-3"><GravedadBadge gravedad={inc.gravedad} /></td>
               <td className="px-4 py-3"><EstadoBadge estado={inc.estado} /></td>
               <td className="px-4 py-3 text-gray-600">
                 {inc.reportadoPor}
-                <br />
-                <span className="text-xs text-gray-400">{inc.rolReportante}</span>
               </td>
             </tr>
           ))}

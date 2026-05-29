@@ -4,7 +4,7 @@ import { MOCK_INCIDENTS } from "../data/mockIncidents";
 
 const USE_MOCK = false;
 
-// --- HOTFIX: Auto-login para desarrollo ---
+//  HOTFIX: Auto-login para desarrollo 
 const fetchDevToken = async () => {
   const res = await fetch("/api/auth/token", {
     method: "POST",
@@ -21,7 +21,7 @@ const fetchDevToken = async () => {
   const data = await res.json();
   return data.access_token;
 };
-// ------------------------------------------
+
 
 // Mapeo de estados 
 function mapEstadoBackendToFront(estado) {
@@ -43,11 +43,12 @@ function mapIncident(inc) {
     _id_incidente: inc.id_incidente,
     fecha:         inc.fecha,
     tipo:          inc.categoria ?? (inc.desc?.split(".")[0] ?? "Incidente"),
+    categoria:     inc.categoria ?? null,
     descripcion:   inc.desc,
     gravedad:      inc.gravedad ?? "baja",
     estado:        mapEstadoBackendToFront(inc.estado),
     razonRechazo:  inc.motivo_rechazo ?? null,
-    reportadoPor:  inc.productor?.nombre ?? "—",
+    reportadoPor:  inc.productor?.nombre?.replace(/\s*\(.*?\)\s*$/, "").trim() ?? "—",
     rolReportante: inc.productor?.tipo_usuario ?? "—",
     evidencia:     inc.documentos?.[0]?.nombre_original ?? null,
     alumno: {

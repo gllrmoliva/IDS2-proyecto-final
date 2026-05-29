@@ -2,6 +2,23 @@
 import { useState } from "react";
 import { FILTER_OPTIONS, INITIAL_FILTERS } from "../../data/mockIncidents";
 
+const GRAVEDADES_OPTS = [
+  { value: "todas", label: "Todas" },
+  { value: "baja",  label: "Baja" },
+  { value: "leve",  label: "Baja" },
+  { value: "media", label: "Media" },
+  { value: "grave", label: "Media" },
+  { value: "alta",  label: "Alta" },
+  { value: "muy_grave", label: "Alta" },
+];
+
+const GRAVEDADES_FILTER = [
+  { value: "todas", label: "Todas" },
+  { value: "baja",  label: "Baja" },
+  { value: "media", label: "Media" },
+  { value: "alta",  label: "Alta" },
+];
+
 const PERIODOS = [
   { value: "todos",  label: "Cualquier fecha" },
   { value: "hoy",    label: "Hoy" },
@@ -107,7 +124,13 @@ export function IncidentFilters({ filters, onChange }) {
             {/* Selectores */}
             <div className="flex flex-wrap gap-4 items-end">
               <FilterSelect label="Estado"   value={draft.estado}   onChange={handleDraft("estado")}   options={FILTER_OPTIONS.estados} />
-              <FilterSelect label="Gravedad" value={draft.gravedad} onChange={handleDraft("gravedad")} options={FILTER_OPTIONS.gravedades} />
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Gravedad</label>
+                <select value={draft.gravedad} onChange={handleDraft("gravedad")}
+                  className="px-3 py-2 rounded-xl border-2 border-gray-200 focus:border-blue-500 focus:outline-none text-sm bg-white min-w-32">
+                  {GRAVEDADES_FILTER.map(g => <option key={g.value} value={g.value}>{g.label}</option>)}
+                </select>
+              </div>
               <FilterSelect label="Curso"    value={draft.curso}    onChange={handleDraft("curso")}    options={FILTER_OPTIONS.cursos} />
             </div>
 

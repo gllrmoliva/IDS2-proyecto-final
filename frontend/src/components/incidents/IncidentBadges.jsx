@@ -10,22 +10,21 @@
 //
 // Para agregar un nuevo valor, se añade en los objetos "map" y "label". (aunque dudo que agreguemos otros)
 
-export function GravedadBadge({ gravedad }) { // Clases de color según nivel de gravedad
-  const map = {
-    "leve":      "bg-blue-100 border border-blue-200",
-    "grave":     "bg-orange-100  border border-orange-200",
-    "muy_grave":      "bg-red-100  border border-red-200",
-  };
+const GRAVEDAD_MAP = {
+  baja: "bg-blue-100 border border-blue-200",   leve: "bg-blue-100 border border-blue-200",
+  media: "bg-orange-100 border border-orange-200", grave: "bg-orange-100 border border-orange-200",
+  alta: "bg-red-100 border border-red-200",     muy_grave: "bg-red-100 border border-red-200",
+};
+const GRAVEDAD_LABEL = {
+  baja: "Baja", leve: "Baja",
+  media: "Media", grave: "Media",
+  alta: "Alta", muy_grave: "Alta",
+};
 
-  const label = {  // Texto visible en el badge
-    "leve": "Baja",
-    "grave": "Media",
-    "muy_grave": "Alta",
-  };
-
+export function GravedadBadge({ gravedad }) {
   return (
-    <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold text-gray-800 ${map[gravedad] ?? "bg-gray-100 text-gray-600"}`}>
-      {label[gravedad] ?? gravedad}
+    <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold text-gray-800 ${GRAVEDAD_MAP[gravedad] ?? "bg-gray-100 text-gray-600"}`}>
+      {GRAVEDAD_LABEL[gravedad] ?? gravedad}
     </span>
   );
 }

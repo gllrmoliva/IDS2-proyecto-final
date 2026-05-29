@@ -106,7 +106,9 @@ export function CaseMonitorView() {
                     <td className="px-4 py-3 font-bold text-blue-700">{c.id}</td>
                     <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{formatFecha(c.fechaInicio)}</td>
                     <td className="px-4 py-3">
-                      {c.estudiantes.slice(0,2).map((e,i) => (
+                      {[...c.estudiantes].sort((a,b) =>
+                        a.rol === "autor_agresor" ? -1 : b.rol === "autor_agresor" ? 1 : 0
+                      ).slice(0,2).map((e,i) => (
                         <div key={i} className="text-gray-800 font-medium text-xs">{e.nombre} <span className="text-gray-400">({e.nombre_curso})</span></div>
                       ))}
                       {c.estudiantes.length > 2 && <div className="text-xs text-gray-400">+{c.estudiantes.length - 2} más</div>}

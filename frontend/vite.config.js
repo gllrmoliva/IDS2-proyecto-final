@@ -11,7 +11,7 @@ export default defineConfig({
     },
     proxy: {
       '/api': {
-        target: process.env.VITE_API_URL || 'http://panoptes_backend:8000',
+        target: process.env.VITE_API_URL || 'http://api:8000',
         changeOrigin: true,
         // rewrite: (path) => path.replace(/^\/api/, '')
       }

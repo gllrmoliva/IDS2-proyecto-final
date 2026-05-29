@@ -5,6 +5,13 @@
 import { useState } from "react";
 import { CASE_FILTER_OPTIONS, CASE_INITIAL_FILTERS } from "../../data/mockCases";
 
+const GRAVEDADES_FILTER = [
+  { value: "todas", label: "Todas" },
+  { value: "baja",  label: "Baja" },
+  { value: "media", label: "Media" },
+  { value: "alta",  label: "Alta" },
+];
+
 export function CaseFilters({ filters, onChange }) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(filters);
@@ -44,7 +51,7 @@ export function CaseFilters({ filters, onChange }) {
               <button onClick={() => setOpen(false)} className="w-7 h-7 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 text-sm">✕</button>
             </div>
             <div className="flex flex-wrap gap-4 items-end">
-              {[["Estado", "estado", CASE_FILTER_OPTIONS.estados], ["Gravedad", "gravedad", CASE_FILTER_OPTIONS.gravedades], ["Curso", "curso", CASE_FILTER_OPTIONS.cursos]].map(([label, key, opts]) => (
+              {[["Estado", "estado", CASE_FILTER_OPTIONS.estados], ["Curso", "curso", CASE_FILTER_OPTIONS.cursos]].map(([label, key, opts]) => (
                 <div key={key} className="flex flex-col gap-1">
                   <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">{label}</label>
                   <select value={draft[key]} onChange={handleDraft(key)}
@@ -53,6 +60,13 @@ export function CaseFilters({ filters, onChange }) {
                   </select>
                 </div>
               ))}
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Gravedad</label>
+                <select value={draft.gravedad} onChange={handleDraft("gravedad")}
+                  className="px-3 py-2 rounded-xl border-2 border-gray-200 focus:border-blue-500 focus:outline-none text-sm bg-white min-w-32">
+                  {GRAVEDADES_FILTER.map(g => <option key={g.value} value={g.value}>{g.label}</option>)}
+                </select>
+              </div>
             </div>
             <div style={{ display: "flex", gap: "12px", borderTop: "1px solid #f0f0f0", paddingTop: "12px" }}>
               <button onClick={handleFiltrar} className="px-6 py-2.5 bg-blue-900 text-white rounded-xl font-bold text-sm hover:bg-blue-800 transition-colors">Filtrar</button>

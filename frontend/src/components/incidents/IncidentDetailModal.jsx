@@ -1,6 +1,27 @@
 // IncidentDetailModal.jsx
 import { useState, useMemo } from "react";
 import { useCases } from "../../hooks/useCases";
+
+const LABEL_CATEGORIA = {
+  violencia_fisica: "Violencia física",
+  violencia_psicologica_acoso: "Violencia psicológica / Acoso",
+  disrupcion_desacato: "Disrupción / Desacato",
+  probidad_fraude: "Probidad / Fraude",
+  dano_infraestructura_bienes: "Daño a infraestructura o bienes",
+  conductas_riesgo_sustancias: "Conductas de riesgo / Sustancias",
+  privacidad_tecnologia: "Privacidad / Tecnología",
+  sexualidad_obscenidad: "Sexualidad / Obscenidad",
+  valores_institucionales: "Valores institucionales",
+  otro: "Otro",
+};
+const LABEL_ROL = {
+  autor_agresor: "Autor / Agresor",
+  afectado_victima: "Afectado / Víctima",
+  complice: "Cómplice",
+  testigo_espectador: "Testigo / Espectador",
+};
+const labelCategoria = (v) => LABEL_CATEGORIA[v] ?? (v ? v.replace(/_/g, " ") : "—");
+const labelRol       = (v) => LABEL_ROL[v]       ?? (v ? v.replace(/_/g, " ") : "Sin rol");
 import { GravedadBadge, EstadoBadge } from "./IncidentBadges";
 import { formatFecha } from "../../utils/dateUtils";
 import { Section, DataRow, FormGroup } from "../shared/UIHelpers";
@@ -150,13 +171,13 @@ export function IncidentDetailModal({ incident, onClose, onAprobar, onRechazar, 
               {incident.involucrados?.length > 0 && (
                 <Section title="Involucrados">
                   <ul className="flex flex-col gap-2">
-                    {incident.involucrados.map((inv, i) => (
+                    {[...incident.involucrados].sort((a,b) => a.rol === "autor_agresor" ? -1 : b.rol === "autor_agresor" ? 1 : 0).map((inv, i) => (
                       <li key={i} className="flex items-center gap-3 text-sm">
                         <span className="w-7 h-7 rounded-full bg-blue-100 text-blue-800 font-bold text-xs flex items-center justify-center flex-shrink-0">
                           {inv.nombre.split(" ").map(x => x[0]).join("").slice(0,2).toUpperCase()}
                         </span>
                         <span className="font-medium text-gray-800">{inv.nombre}</span>
-                        <span className="ml-auto text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">{inv.rol}</span>
+                        <span className="ml-auto text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">{labelRol(inv.rol)}</span>
                       </li>
                     ))}
                   </ul>
@@ -164,7 +185,7 @@ export function IncidentDetailModal({ incident, onClose, onAprobar, onRechazar, 
               )}
               <Section title="ℹInformación del reporte">
                 <DataRow label="Fecha"         value={formatFecha(incident.fecha)} />
-                <DataRow label="Reportado por" value={`${incident.reportadoPor} (${incident.rolReportante})`} />
+                <DataRow label="Reportado por" value={incident.reportadoPor} />
                 <DataRow label="Evidencia"     value={incident.evidencia ?? "Sin evidencia adjunta"} />
               </Section>
             </div>

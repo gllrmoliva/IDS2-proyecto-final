@@ -23,22 +23,21 @@ export function EstadoCasoBadge({ estado }) {
   );
 }
 
+const GRAVEDAD_CASO_MAP = {
+  baja: "bg-blue-100 border border-blue-200",   leve: "bg-blue-100 border border-blue-200",
+  media: "bg-orange-100 border border-orange-200", grave: "bg-orange-100 border border-orange-200",
+  alta: "bg-red-100 border border-red-200",     muy_grave: "bg-red-100 border border-red-200",
+};
+const GRAVEDAD_CASO_LABEL = {
+  baja: "Baja", leve: "Baja",
+  media: "Media", grave: "Media",
+  alta: "Alta", muy_grave: "Alta",
+};
+
 export function GravedadCasoBadge({ gravedad }) {
-  const map = {
-    "leve":  "bg-blue-100 border border-blue-200",
-    "grave": "bg-orange-100  border border-orange-200",
-    "muy_grave":  "bg-red-100  border border-red-200",
-  };
-
-  const label = {  // Texto visible en el badge
-    "leve": "Baja",
-    "grave": "Media",
-    "muy_grave": "Alta",
-  };
-
   return (
-    <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold ${map[gravedad] ?? "bg-gray-100 text-gray-600"}`}>
-      {label[gravedad] ?? gravedad}
+    <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold ${GRAVEDAD_CASO_MAP[gravedad] ?? "bg-gray-100 text-gray-600"}`}>
+      {GRAVEDAD_CASO_LABEL[gravedad] ?? gravedad}
     </span>
   );
 }
