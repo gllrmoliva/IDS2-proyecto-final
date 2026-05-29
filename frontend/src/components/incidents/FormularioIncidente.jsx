@@ -26,6 +26,8 @@ const CATEGORIAS_CONVIVENCIA = [
 ];
 
 
+const USE_MOCK = false; // 
+
 export default function FormularioIncidente() {
   const [formData, setFormData] = useState({
     fecha: '',
@@ -36,7 +38,7 @@ export default function FormularioIncidente() {
 
   const [involucradoPrincipal, setInvolucradoPrincipal] = useState(null);
   const [rolPrincipal, setRolPrincipal] = useState(null); // null = sin rol
-  const [otrosInvolucrados, setOtrosInvolucrados] = useState([]); // [{estudiante, rol}]
+  const [otrosInvolucrados, setOtrosInvolucrados] = useState([]); 
   const [archivos, setArchivos] = useState([]);
   const [loading, setLoading] = useState(false);
   const [mensaje, setMensaje] = useState({ texto: '', tipo: '' });
@@ -70,7 +72,7 @@ export default function FormularioIncidente() {
     setOtrosInvolucrados(otrosInvolucrados.filter((_, i) => i !== index));
   };
 
-  // IDs ya seleccionados para excluirlos de otros buscadores
+  // IDs ya seleccionados 
   const idsSeleccionados = [
     involucradoPrincipal?.id_estudiante,
     ...otrosInvolucrados.map(e => e?.estudiante?.id_estudiante),
@@ -82,28 +84,49 @@ export default function FormularioIncidente() {
     setMensaje({ texto: '', tipo: '' });
 
     try {
-      // TODO: reemplazar por fetch real:
-      // const res = await fetch('/api/operate/incidents/', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({
-      //     desc:        formData.descripcion,
-      //     fecha:       formData.fecha.split('T')[0],
-      //     gravedad:    formData.gravedad,
-      //     estudiantes: idsSeleccionados,
-      //     // roles: [rolPrincipal, ...otrosInvolucrados.map(o => o.rol)],
-      //   }),
-      // });
-      // if (!res.ok) throw new Error();
-
-      setTimeout(() => {
+      if (USE_MOCK) {
+        await new Promise(r => setTimeout(r, 800));
         setMensaje({ texto: 'Incidente registrado exitosamente en Panoptes.', tipo: 'success' });
         setFormData({ fecha: '', descripcion: '', gravedad: 'baja', categoria: 'violencia_fisica' });
         setInvolucradoPrincipal(null);
         setOtrosInvolucrados([]);
         setArchivos([]);
         setLoading(false);
-      }, 1000);
+        return;
+      }
+
+      //  Fetch
+      // POST /api/operate/incidents/create
+      // Payload: IncidentCreate { desc, fecha, gravedad, categoria, estudiantes_ids }
+      const token = sessionStorage.getItem('panoptes_token');
+      const payload = {
+        desc:            formData.descripcion,
+        fecha:           formData.fecha.split('T')[0],
+        gravedad:        formData.gravedad,
+        categoria:       formData.categoria,
+        estudiantes_ids: idsSeleccionados,   // lista de RUTs
+      };
+
+      const res = await fetch('/api/operate/incidents/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail ?? `Error ${res.status}`);
+      }
+
+      setMensaje({ texto: 'Incidente registrado exitosamente en Panoptes.', tipo: 'success' });
+      setFormData({ fecha: '', descripcion: '', gravedad: 'baja', categoria: 'violencia_fisica' });
+      setInvolucradoPrincipal(null);
+      setOtrosInvolucrados([]);
+      setArchivos([]);
+      setLoading(false);
     } catch (error) {
       setMensaje({ texto: 'Error al conectar con el servidor.', tipo: 'error' });
       setLoading(false);

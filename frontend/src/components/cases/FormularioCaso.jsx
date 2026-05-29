@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { BuscadorEstudiante } from '../shared/StudentSearch';
 
-// Valores del enum rol_involucrado del backend — null permitido
+// Valores del enum rol_involucrado 
+// null = sin rol 
 const ROLES_INVOLUCRADO = [
   { value: null,                 label: 'Sin rol' },
   { value: 'autor_agresor',      label: 'Autor / Agresor' },
@@ -11,7 +12,7 @@ const ROLES_INVOLUCRADO = [
   { value: 'testigo_espectador', label: 'Testigo / Espectador' },
 ];
 
-// Valores del enum categoria_convivencia del backend
+// Valores del enum categoria_convivencia
 const CATEGORIAS_CONVIVENCIA = [
   { value: 'violencia_fisica',             label: 'Violencia física' },
   { value: 'violencia_psicologica_acoso',  label: 'Violencia psicológica / Acoso' },
@@ -26,6 +27,8 @@ const CATEGORIAS_CONVIVENCIA = [
 ];
 
 
+const USE_MOCK = false; 
+
 export default function FormularioCaso() {
   const [formData, setFormData] = useState({
     fecha_inicio: '',
@@ -36,7 +39,7 @@ export default function FormularioCaso() {
 
   const [estudiantePrincipal, setEstudiantePrincipal] = useState(null);
   const [rolPrincipal, setRolPrincipal] = useState(null);
-  const [otrosEstudiantes, setOtrosEstudiantes] = useState([]); // [{estudiante, rol}]
+  const [otrosEstudiantes, setOtrosEstudiantes] = useState([]); 
   const [archivos, setArchivos] = useState([]);
   const [loading, setLoading]   = useState(false);
   const [mensaje, setMensaje]   = useState({ texto: '', tipo: '' });
@@ -79,28 +82,54 @@ export default function FormularioCaso() {
     setMensaje({ texto: '', tipo: '' });
 
     try {
-      // TODO: reemplazar por fetch real:
-      // const res = await fetch('/api/operate/cases/', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({
-      //     desc:         formData.desc,
-      //     fecha_inicio: formData.fecha_inicio,
-      //     gravedad:     formData.gravedad,
-      //     estado:       'abierto',
-      //     estudiantes:  idsSeleccionados,
-      //   }),
-      // });
-      // if (!res.ok) throw new Error();
-
-      setTimeout(() => {
+      if (USE_MOCK) {
+        await new Promise(r => setTimeout(r, 800));
         setMensaje({ texto: 'Caso creado exitosamente en Panoptes.', tipo: 'success' });
         setFormData({ fecha_inicio: '', desc: '', gravedad: 'baja', categoria: 'violencia_fisica' });
         setEstudiantePrincipal(null);
         setOtrosEstudiantes([]);
         setArchivos([]);
         setLoading(false);
-      }, 1000);
+        return;
+      }
+
+      // Fetch 
+      // POST /api/operate/cases/
+      // Payload: CasoCreate { id_coordinador, desc, fecha_inicio, gravedad, categoria, estado }
+      // id_coordinador se obtiene del usuario guardado en sessionStorage al hacer login
+      const token = sessionStorage.getItem('panoptes_token');
+      const userRaw = sessionStorage.getItem('panoptes_user');
+      const user = userRaw ? JSON.parse(userRaw) : null;
+
+      const payload = {
+        id_coordinador: user?.id_usuario ?? '',
+        desc:           formData.desc,
+        fecha_inicio:   formData.fecha_inicio,
+        gravedad:       formData.gravedad,
+        categoria:      formData.categoria,
+        estado:         'abierto',
+      };
+
+      const res = await fetch('/api/operate/cases/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail ?? `Error ${res.status}`);
+      }
+
+      setMensaje({ texto: 'Caso creado exitosamente en Panoptes.', tipo: 'success' });
+      setFormData({ fecha_inicio: '', desc: '', gravedad: 'baja', categoria: 'violencia_fisica' });
+      setEstudiantePrincipal(null);
+      setOtrosEstudiantes([]);
+      setArchivos([]);
+      setLoading(false);
     } catch (error) {
       setMensaje({ texto: 'Error al conectar con el servidor.', tipo: 'error' });
       setLoading(false);
