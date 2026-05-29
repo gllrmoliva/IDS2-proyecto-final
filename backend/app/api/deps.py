@@ -13,6 +13,7 @@ from app.database.database import get_db
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/token")
 
+
 async def get_current_user(
     token: Annotated[str, Depends(oauth2_scheme)],
     db: AsyncSession = Depends(get_db)
@@ -36,6 +37,7 @@ async def get_current_user(
         raise credentials_exception
     return user
 
+
 async def get_current_active_user(
     current_user: Annotated[UsuarioResponse, Depends(get_current_user)],
 ):
@@ -53,6 +55,7 @@ class RoleChecker:
     Nota: en teoría, se podría extender para que UsuarioBase considere una lista de roles, pero
     el modelo de negocio no sustenta esa decisión.
     """
+
     def __init__(self, allowed_roles: list[str]):
         self.allowed_roles = allowed_roles
 

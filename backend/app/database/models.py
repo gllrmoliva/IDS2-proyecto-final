@@ -273,7 +273,7 @@ class Estudiante(Base):
 class Caso(Base):
     __tablename__ = "Caso"
 
-    id_caso: Mapped[int] = mapped_column(Integer, primary_key=True)
+    id_caso: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     id_coordinador: Mapped[str] = mapped_column(
         String,
         ForeignKey("Coordinador.id_usuario", deferrable=True, initially="IMMEDIATE"),
@@ -304,7 +304,8 @@ class Caso(Base):
 class Hito(Base):
     __tablename__ = "Hito"
 
-    id_hito: Mapped[int] = mapped_column(Integer, primary_key=True)
+    id_hito: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+
     id_caso: Mapped[int] = mapped_column(
         Integer,
         ForeignKey(
@@ -398,7 +399,8 @@ class Incidente(Base):
 class Documento(Base):
     __tablename__ = "Documento"
 
-    id_doc: Mapped[int] = mapped_column(Integer, primary_key=True)
+    id_doc: Mapped[int] = mapped_column(Integer, primary_key=True,
+                                              autoincrement=True)
     bucket_name: Mapped[str] = mapped_column(
         String, nullable=False, comment="Ej: 'evidencias', 'documentos'"
     )
