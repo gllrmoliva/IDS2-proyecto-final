@@ -12,15 +12,15 @@
 
 export function GravedadBadge({ gravedad }) { // Clases de color según nivel de gravedad
   const map = {
-    "baja":      "bg-blue-100 border border-blue-200",
-    "media":     "bg-orange-100  border border-orange-200",
-    "alta":      "bg-red-100  border border-red-200",
+    "leve":      "bg-blue-100 border border-blue-200",
+    "grave":     "bg-orange-100  border border-orange-200",
+    "muy_grave":      "bg-red-100  border border-red-200",
   };
 
   const label = {  // Texto visible en el badge
-    "baja": "Baja",
-    "media": "Media",
-    "alta": "Alta",
+    "leve": "Baja",
+    "grave": "Media",
+    "muy_grave": "Alta",
   };
 
   return (

@@ -1,33 +1,57 @@
-// Buscador de estudiantes con filtro por curso.
-// Reutilizado en FormularioIncidente y FormularioCaso.
-//
-// Props:
-//   placeholder  -> texto del input
-//   onSeleccionar -> callback que recibe el estudiante seleccionado (o null al limpiar)
-//   excluir       -> array de id_estudiante a excluir del listado
-//   estudiantes   -> array de estudiantes (si no se pasa, usa MOCK)
- 
-import { useState, useMemo } from "react";
- 
-const MOCK_ESTUDIANTES = [
-  { id_estudiante: '21.345.678-9', nombre: 'Valentina Rojas Soto',   nombre_curso: '3°A' },
-  { id_estudiante: '21.456.789-0', nombre: 'Matías González Vera',   nombre_curso: '3°A' },
-  { id_estudiante: '21.567.890-1', nombre: 'Isidora Campos Núñez',   nombre_curso: '3°A' },
-  { id_estudiante: '21.678.901-2', nombre: 'Sebastián Muñoz Torres', nombre_curso: '2°B' },
-  { id_estudiante: '21.789.012-3', nombre: 'Catalina Vega Morales',  nombre_curso: '2°B' },
-  { id_estudiante: '21.890.123-4', nombre: 'Diego Herrera Lagos',    nombre_curso: '1°C' },
-  { id_estudiante: '21.901.234-5', nombre: 'Javiera Soto Bravo',     nombre_curso: '4°D' },
-];
- 
+import { useState, useMemo, useEffect } from "react";
+
 export function BuscadorEstudiante({ placeholder, onSeleccionar, excluir = [], estudiantes }) {
-  const lista = estudiantes ?? MOCK_ESTUDIANTES;
-  const CURSOS = ['Todos', ...new Set(lista.map(e => e.nombre_curso))];
- 
-  const [query, setQuery]           = useState('');
-  const [curso, setCurso]           = useState('Todos');
-  const [abierto, setAbierto]       = useState(false);
+  // Inicializamos la lista con las props si existen, de lo contrario un array vacío
+  const [lista, setLista] = useState(estudiantes || []);
+  const [cargando, setCargando] = useState(!estudiantes);
+  const [error, setError] = useState(null);
+
+  const [query, setQuery] = useState('');
+  const [curso, setCurso] = useState('Todos');
+  const [abierto, setAbierto] = useState(false);
   const [seleccionado, setSeleccionado] = useState(null);
- 
+
+  useEffect(() => {
+    // Si los estudiantes se inyectan directamente como prop, omitimos el fetch
+    if (estudiantes) {
+      setLista(estudiantes);
+      setCargando(false);
+      return;
+    }
+
+    const fetchEstudiantes = async () => {
+      try {
+        // TODO: Ajusta la obtención del token según cómo se maneje la sesión en Panoptes
+        const token = localStorage.getItem("token"); 
+
+        // El prefijo asume una estructura estándar; ajústalo si FastAPI se levanta en un host distinto
+        const response = await fetch("/api/students/get_all", {
+          method: 'GET',
+          headers: {
+            "Authorization": `Bearer ${token}`,
+            "Content-Type": "application/json"
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error("No se pudieron cargar los estudiantes");
+        }
+
+        const data = await response.json();
+        setLista(data);
+      } catch (err) {
+        console.error(err);
+        setError("Error al cargar datos del backend.");
+      } finally {
+        setCargando(false);
+      }
+    };
+
+    fetchEstudiantes();
+  }, [estudiantes]);
+
+  const CURSOS = ['Todos', ...new Set(lista.map(e => e.nombre_curso))];
+
   const resultados = useMemo(() => {
     const q = query.toLowerCase();
     return lista.filter(e => {
@@ -37,41 +61,60 @@ export function BuscadorEstudiante({ placeholder, onSeleccionar, excluir = [], e
       return e.nombre.toLowerCase().includes(q) || e.id_estudiante.includes(q);
     });
   }, [query, curso, excluir, lista]);
- 
+
   const handleSeleccionar = (est) => {
     setSeleccionado(est);
     setQuery(est.nombre);
     setAbierto(false);
     onSeleccionar(est);
   };
- 
+
   const handleLimpiar = () => {
     setSeleccionado(null);
     setQuery('');
     setCurso('Todos');
     onSeleccionar(null);
   };
- 
+
   return (
     <div style={{ position: 'relative' }}>
+      
+      {/* Indicadores de estado de red */}
+      {cargando && <p className="text-xs text-gray-500 mb-1">Cargando estudiantes...</p>}
+      {error && <p className="text-xs text-red-500 mb-1">{error}</p>}
+
       <div className="flex gap-2 items-center">
-        <select value={curso} onChange={(e) => { setCurso(e.target.value); setAbierto(true); }}
-          className="px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 outline-none transition text-gray-700 text-sm"
-          style={{ minWidth: '90px' }}>
+        <select 
+          value={curso} 
+          onChange={(e) => { setCurso(e.target.value); setAbierto(true); }}
+          disabled={cargando || error}
+          className="px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 outline-none transition text-gray-700 text-sm disabled:bg-gray-100"
+          style={{ minWidth: '90px' }}
+        >
           {CURSOS.map(c => <option key={c} value={c}>{c}</option>)}
         </select>
-        <input type="text" value={query}
-          onChange={(e) => { setQuery(e.target.value); setAbierto(true); if (seleccionado) { setSeleccionado(null); onSeleccionar(null); } }}
+        <input 
+          type="text" 
+          value={query}
+          disabled={cargando || error}
+          onChange={(e) => { 
+            setQuery(e.target.value); 
+            setAbierto(true); 
+            if (seleccionado) { 
+              setSeleccionado(null); 
+              onSeleccionar(null); 
+            } 
+          }}
           onFocus={() => setAbierto(true)}
-          placeholder={placeholder}
-          className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-gray-700"
+          placeholder={cargando ? "Cargando..." : placeholder}
+          className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-gray-700 disabled:bg-gray-100"
         />
         {seleccionado && (
           <button type="button" onClick={handleLimpiar} className="text-gray-400 hover:text-gray-600 text-lg px-1">✕</button>
         )}
       </div>
  
-      {abierto && !seleccionado && (
+      {abierto && !seleccionado && !cargando && !error && (
         <>
           <div style={{ position: 'fixed', inset: 0, zIndex: 10 }} onClick={() => setAbierto(false)} />
           <div style={{
