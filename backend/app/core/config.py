@@ -1,4 +1,5 @@
 from pydantic import computed_field
+from typing import List
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -17,7 +18,7 @@ class Settings(BaseSettings):
     MINIO_ROOT_USER: str
     MINIO_ROOT_PASSWORD: str
 
-    EXTENSIONES_PERMITIDAS: set = {"jpg", "jpeg", "png", "gif", "mp4", "mov", "pdf", "docx", "xlsx"}
+    EXTENSIONES_PERMITIDAS: List[str] = ["jpg", "jpeg", "png", "gif", "mp4", "mov", "pdf", "docx", "xlsx"]
     TAMANO_MAXIMO_MB: int = 100
 
     # 2. Usamos un computed_field para que se calcule SIEMPRE en base al valor real de MB

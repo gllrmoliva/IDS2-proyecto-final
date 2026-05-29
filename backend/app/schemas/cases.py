@@ -1,10 +1,10 @@
 from datetime import date
 from typing import List, Optional, Literal
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from app.database.models import (
-    EstadoCaso, 
-    Gravedad, 
-    EstadoIncidente, 
+    EstadoCaso,
+    Gravedad,
+    EstadoIncidente,
     CategoriaConvivencia,
     TipoHito,
     NivelMedida,
@@ -67,7 +67,7 @@ class CasoResponse(BaseModel):
     gravedad: Gravedad
     categoria: CategoriaConvivencia
     
-    estudiantes_asociados: List[EstudianteAsociadoResponse] = []
+    estudiantes: List[EstudianteAsociadoResponse] = []
     hitos: List[HitoResponse] = []
 
     model_config = ConfigDict(from_attributes=True)
@@ -97,7 +97,7 @@ class IncidentResponse(BaseModel):
     motivo_rechazo: Optional[str] = None
 
     productor: Optional[ProductorResponse] = None
-    estudiantes_asociados: List[EstudianteAsociadoResponse] = []
+    estudiantes: List[EstudianteAsociadoResponse] = []
     documentos: List[DocumentoResponse] = []
 
     model_config = ConfigDict(from_attributes=True)
@@ -110,11 +110,13 @@ class DocumentoCreate(BaseModel):
     mime_type: str
     size_bytes: int
     descripcion: str
+
     
 # Payload estructural para asignar el rol durante la creación
 class EstudianteRolCreate(BaseModel):
     id_estudiante: str
     rol: Optional[RolInvolucrado] = None
+
 
 class IncidentCreate(BaseModel):
     gravedad: Gravedad
@@ -128,7 +130,7 @@ class IncidentCreate(BaseModel):
 
 class CasoCreate(BaseModel):
     id_coordinador: str
-    estado: EstadoCaso = EstadoCaso.abierto  
+    estado: EstadoCaso = EstadoCaso.abierto
     fecha_inicio: date
     fecha_cierre: Optional[date] = None
     desc: str
@@ -142,6 +144,7 @@ class CasoDesdeIncidenteCreate(BaseModel):
     desc: str
     gravedad: Gravedad
     categoria: CategoriaConvivencia
+
 
 class ElevacionIncidenteRequest(BaseModel):
     tipo_elevacion: Literal["nuevo_caso", "acumulacion"]

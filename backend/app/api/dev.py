@@ -8,6 +8,7 @@ router = APIRouter(tags=["Utilidades de desarrollo"], prefix="/dev")
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 
+
 @router.get("/reset-database")
 async def reset_database(db: AsyncSession = Depends(get_db)):
     """
