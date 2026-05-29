@@ -438,9 +438,15 @@ class Documento(Base):
         nullable=True,
     )
 
+    id_caso: Mapped[Optional[int]] = mapped_column(
+        Integer,
+        ForeignKey("Caso.id_caso", deferrable=True, initially="IMMEDIATE"),
+        nullable=True,
+    )
+
     __table_args__ = (
         CheckConstraint(
-            "id_hito IS NOT NULL OR id_incidente IS NOT NULL",
-            name="chk_documento_origen_obligatorio",
+            "num_nonnulls(id_hito, id_caso, id_incidente) = 1",
+            name="chk_doc_pertenencia",
         ),
     )
