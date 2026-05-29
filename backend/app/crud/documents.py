@@ -13,8 +13,9 @@ async def create_document(
     mime_type: str,
     size_bytes: int,
     descripcion: str,
-    id_hito: int,
-    id_incidente: int | None = None
+    id_hito: int | None = None,
+    id_incidente: int | None = None,
+    id_caso: int | None = None
 ):
     """
     Crea un nuevo registro de documento en la base de datos.
@@ -28,6 +29,7 @@ async def create_document(
         descripcion=descripcion,
         id_hito=id_hito,
         id_incidente=id_incidente,
+        id_caso=id_caso
     )
     
     db.add(nuevo_doc)
