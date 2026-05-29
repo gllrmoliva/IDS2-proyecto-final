@@ -25,80 +25,52 @@ class Base(DeclarativeBase):
 # ENUMERADORES
 ####################
 
-
 class EstadoCaso(str, enum.Enum):
     abierto = "abierto"
     cerrado = "cerrado"
 
-
 class Gravedad(str, enum.Enum):
-    baja = "baja"
-    media = "media"
-    alta = "alta"
-
+    leve = "leve"
+    grave = "grave"
+    muy_grave = "muy_grave"
 
 class EstadoIncidente(str, enum.Enum):
     aceptado = "aceptado"
     pendiente = "pendiente"
     rechazado = "rechazado"
 
+class TipoHito(str, enum.Enum):
+    tramite = "tramite"
+    medida = "medida"
+
+class NivelMedida(str, enum.Enum):
+    cautelar = "cautelar"
+    formativa_n1 = "formativa_n1"
+    disciplinaria_n2 = "disciplinaria_n2"
+    excepcional_n3 = "excepcional_n3"
+
+class RolInvolucrado(str, enum.Enum):
+    afectado_victima = "afectado_victima"
+    autor_agresor = "autor_agresor"
+    complice = "complice"
+    testigo_espectador = "testigo_espectador"
+
+class CategoriaConvivencia(str, enum.Enum):
+    violencia_fisica = "violencia_fisica"
+    violencia_psicologica_acoso = "violencia_psicologica_acoso"
+    disrupcion_desacato = "disrupcion_desacato"
+    probidad_fraude = "probidad_fraude"
+    dano_infraestructura_bienes = "dano_infraestructura_bienes"
+    conductas_riesgo_sustancias = "conductas_riesgo_sustancias"
+    privacidad_tecnologia = "privacidad_tecnologia"
+    sexualidad_obscenidad = "sexualidad_obscenidad"
+    valores_institucionales = "valores_institucionales"
+    otro = "otro"
+
 
 ####################
-# RELACIONES
+# RELACIONES SECUNDARIAS (Sólo sin payload extra)
 ####################
-
-estudiante_caso = Table(
-    "Estudiante_Caso",
-    Base.metadata,
-    Column(
-        "id_estudiante",
-        String,
-        ForeignKey(
-            "Estudiante.id_estudiante",
-            ondelete="CASCADE",
-            deferrable=True,
-            initially="IMMEDIATE",
-        ),
-        primary_key=True,
-    ),
-    Column(
-        "id_caso",
-        Integer,
-        ForeignKey(
-            "Caso.id_caso", ondelete="CASCADE", deferrable=True, initially="IMMEDIATE"
-        ),
-        primary_key=True,
-    ),
-)
-
-
-estudiante_incidente = Table(
-    "Estudiante_Incidente",
-    Base.metadata,
-    Column(
-        "id_estudiante",
-        String,
-        ForeignKey(
-            "Estudiante.id_estudiante",
-            ondelete="CASCADE",
-            deferrable=True,
-            initially="IMMEDIATE",
-        ),
-        primary_key=True,
-    ),
-    Column(
-        "id_incidente",
-        Integer,
-        ForeignKey(
-            "Incidente.id_incidente",
-            ondelete="CASCADE",
-            deferrable=True,
-            initially="IMMEDIATE",
-        ),
-        primary_key=True,
-    ),
-)
-
 
 estudiante_hito = Table(
     "Estudiante_Hito",
@@ -126,9 +98,45 @@ estudiante_hito = Table(
 
 
 ####################
-# USUARIOS
+# ASSOCIATION OBJECTS (Para relaciones con Rol)
 ####################
 
+class EstudianteCaso(Base):
+    __tablename__ = "Estudiante_Caso"
+    id_estudiante: Mapped[str] = mapped_column(
+        ForeignKey("Estudiante.id_estudiante", ondelete="CASCADE", deferrable=True, initially="IMMEDIATE"), 
+        primary_key=True
+    )
+    id_caso: Mapped[int] = mapped_column(
+        ForeignKey("Caso.id_caso", ondelete="CASCADE", deferrable=True, initially="IMMEDIATE"), 
+        primary_key=True
+    )
+    rol: Mapped[Optional[RolInvolucrado]] = mapped_column()
+
+    estudiante: Mapped["Estudiante"] = relationship(back_populates="casos")
+    caso: Mapped["Caso"] = relationship(back_populates="estudiantes")
+
+
+class EstudianteIncidente(Base):
+    __tablename__ = "Estudiante_Incidente"
+    id_estudiante: Mapped[str] = mapped_column(
+        ForeignKey("Estudiante.id_estudiante", ondelete="CASCADE", deferrable=True, initially="IMMEDIATE"), 
+        primary_key=True
+    )
+    id_incidente: Mapped[int] = mapped_column(
+        ForeignKey("Incidente.id_incidente", ondelete="CASCADE", deferrable=True, initially="IMMEDIATE"), 
+        primary_key=True
+    )
+    rol: Mapped[Optional[RolInvolucrado]] = mapped_column()
+
+    estudiante: Mapped["Estudiante"] = relationship(back_populates="incidentes")
+    incidente: Mapped["Incidente"] = relationship(back_populates="estudiantes")
+
+
+
+####################
+# USUARIOS
+####################
 
 class Usuario(Base):
     __tablename__ = "Usuario"
@@ -217,7 +225,6 @@ class ProfesorJefe(Productor):
 # SISTEMA CURRICULAR
 ####################
 
-
 class Curso(Base):
     __tablename__ = "Curso"
 
@@ -249,12 +256,10 @@ class Estudiante(Base):
     )
 
     curso: Mapped[Optional["Curso"]] = relationship(back_populates="estudiantes")
-    casos: Mapped[List["Caso"]] = relationship(
-        secondary=estudiante_caso, back_populates="estudiantes"
-    )
-    incidentes: Mapped[List["Incidente"]] = relationship(
-        secondary=estudiante_incidente, back_populates="estudiantes"
-    )
+    
+    casos: Mapped[List["EstudianteCaso"]] = relationship(back_populates="estudiante", cascade="all, delete-orphan")
+    incidentes: Mapped[List["EstudianteIncidente"]] = relationship(back_populates="estudiante", cascade="all, delete-orphan")
+    
     hitos: Mapped[List["Hito"]] = relationship(
         secondary=estudiante_hito, back_populates="estudiantes"
     )
@@ -263,7 +268,6 @@ class Estudiante(Base):
 ####################
 # GESTIÓN CASOS
 ####################
-
 
 class Caso(Base):
     __tablename__ = "Caso"
@@ -279,12 +283,20 @@ class Caso(Base):
     fecha_cierre: Mapped[Optional[date]] = mapped_column(Date)
     desc: Mapped[str] = mapped_column(Text, nullable=False)
     gravedad: Mapped[Gravedad] = mapped_column(nullable=False)
+    categoria: Mapped[CategoriaConvivencia] = mapped_column(nullable=False)
 
-    estudiantes: Mapped[List["Estudiante"]] = relationship(
-        secondary=estudiante_caso, back_populates="casos"
+    estudiantes: Mapped[List["EstudianteCaso"]] = relationship(
+        back_populates="caso", cascade="all, delete-orphan"
     )
     hitos: Mapped[List["Hito"]] = relationship(
         back_populates="caso", cascade="all, delete-orphan"
+    )
+    
+    # Relación inversa explícita para la navegación de la reincidencia/acumulación (opcional pero útil)
+    incidentes_acumulados: Mapped[List["Incidente"]] = relationship(
+        "Incidente", 
+        foreign_keys="[Incidente.id_caso_acumulado]", 
+        back_populates="caso_acumulado"
     )
 
 
@@ -299,8 +311,17 @@ class Hito(Base):
         ),
         nullable=False,
     )
+    tipo: Mapped[TipoHito] = mapped_column(nullable=False)
+    nivel_medida: Mapped[Optional[NivelMedida]] = mapped_column()
     desc: Mapped[str] = mapped_column(Text, nullable=False)
     fecha: Mapped[date] = mapped_column(Date, nullable=False)
+
+    __table_args__ = (
+        CheckConstraint(
+            "(tipo = 'medida'::tipo_hito AND nivel_medida IS NOT NULL) OR (tipo = 'tramite'::tipo_hito AND nivel_medida IS NULL)",
+            name="chk_hito_medida_nivel",
+        ),
+    )
 
     caso: Mapped["Caso"] = relationship(back_populates="hitos")
     estudiantes: Mapped[List["Estudiante"]] = relationship(
@@ -318,22 +339,19 @@ class Incidente(Base):
         ForeignKey("Productor.id_usuario", deferrable=True, initially="IMMEDIATE"),
         nullable=False,
     )
-
     gravedad: Mapped[Gravedad] = mapped_column(nullable=False)
-
     desc: Mapped[str] = mapped_column(Text, nullable=False)
     fecha: Mapped[date] = mapped_column(Date, nullable=False)
+    categoria: Mapped[CategoriaConvivencia] = mapped_column(nullable=False)
 
     id_caso: Mapped[Optional[int]] = mapped_column(
         Integer,
         ForeignKey("Caso.id_caso", deferrable=True, initially="IMMEDIATE"),
         unique=True,
     )
-
-    id_hito: Mapped[Optional[int]] = mapped_column(
+    id_caso_acumulado: Mapped[Optional[int]] = mapped_column(
         Integer,
-        ForeignKey("Hito.id_hito", deferrable=True, initially="IMMEDIATE"),
-        unique=True,
+        ForeignKey("Caso.id_caso", deferrable=True, initially="IMMEDIATE"),
     )
 
     estado: Mapped[EstadoIncidente] = mapped_column(nullable=False)
@@ -341,14 +359,15 @@ class Incidente(Base):
 
     __table_args__ = (
         CheckConstraint(
-            "id_caso IS NULL OR id_hito IS NULL", name="mutualmente_exclusivo"
+            "id_caso IS NULL OR id_caso_acumulado IS NULL", 
+            name="mutualmente_exclusivo_ruta"
         ),
         CheckConstraint(
-            "estado = 'aceptado'::estado_incidente OR (id_caso IS NULL AND id_hito IS NULL)",
+            "estado = 'aceptado'::estado_incidente OR (id_caso IS NULL AND id_caso_acumulado IS NULL)",
             name="estado_incidente_1",
         ),
         CheckConstraint(
-            "estado != 'aceptado'::estado_incidente OR (id_caso IS NOT NULL OR id_hito IS NOT NULL)",
+            "estado != 'aceptado'::estado_incidente OR (id_caso IS NOT NULL OR id_caso_acumulado IS NOT NULL)",
             name="estado_incidente_2",
         ),
         CheckConstraint(
@@ -361,16 +380,14 @@ class Incidente(Base):
         ),
     )
 
-    estudiantes: Mapped[List["Estudiante"]] = relationship(
-        secondary="Estudiante_Incidente", back_populates="incidentes"
+    estudiantes: Mapped[List["EstudianteIncidente"]] = relationship(
+        back_populates="incidente", cascade="all, delete-orphan"
     )
     documentos: Mapped[List["Documento"]] = relationship()
-
     productor: Mapped["Productor"] = relationship("Productor")
-
-    caso: Mapped[Optional["Caso"]] = relationship("Caso")
-
-    hito: Mapped[Optional["Hito"]] = relationship("Hito")
+    
+    caso_origen: Mapped[Optional["Caso"]] = relationship("Caso", foreign_keys=[id_caso])
+    caso_acumulado: Mapped[Optional["Caso"]] = relationship("Caso", foreign_keys=[id_caso_acumulado], back_populates="incidentes_acumulados")
 
 
 class Documento(Base):
@@ -394,6 +411,7 @@ class Documento(Base):
     )
     size_bytes: Mapped[int] = mapped_column(BigInteger, nullable=False)
     descripcion: Mapped[str] = mapped_column(Text, nullable=False)
+    
     id_hito: Mapped[int] = mapped_column(
         Integer,
         ForeignKey("Hito.id_hito", deferrable=True, initially="IMMEDIATE"),
