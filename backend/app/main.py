@@ -5,6 +5,7 @@ from app.api.notifications import router as notifications_router
 from app.api.reports import router as reports_router
 from app.api.students import router as students_router
 from app.api.dev import router as dev_router
+from app.api.documents import router as documents_router
 
 from app.core.config import settings
 
@@ -17,4 +18,5 @@ app.include_router(auth_router, prefix=prefix)
 app.include_router(notifications_router, prefix=prefix)
 app.include_router(reports_router, prefix=prefix)
 app.include_router(students_router, prefix=prefix)
+app.include_router(documents_router, prefix=prefix)
 app.include_router(dev_router)
