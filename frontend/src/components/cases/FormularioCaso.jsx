@@ -2,11 +2,27 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { BuscadorEstudiante } from '../shared/StudentSearch';
 
+// Valores del enum rol_involucrado del backend — null permitido
 const ROLES_INVOLUCRADO = [
-  'Autor/a',
-  'Afectado/a',
-  'Cómplice',
-  'Testigo / Espectador',
+  { value: null,                 label: 'Sin rol' },
+  { value: 'autor_agresor',      label: 'Autor / Agresor' },
+  { value: 'afectado_victima',   label: 'Afectado / Víctima' },
+  { value: 'complice',           label: 'Cómplice' },
+  { value: 'testigo_espectador', label: 'Testigo / Espectador' },
+];
+
+// Valores del enum categoria_convivencia del backend
+const CATEGORIAS_CONVIVENCIA = [
+  { value: 'violencia_fisica',             label: 'Violencia física' },
+  { value: 'violencia_psicologica_acoso',  label: 'Violencia psicológica / Acoso' },
+  { value: 'disrupcion_desacato',          label: 'Disrupción / Desacato' },
+  { value: 'probidad_fraude',              label: 'Probidad / Fraude' },
+  { value: 'dano_infraestructura_bienes',  label: 'Daño a infraestructura o bienes' },
+  { value: 'conductas_riesgo_sustancias',  label: 'Conductas de riesgo / Sustancias' },
+  { value: 'privacidad_tecnologia',        label: 'Privacidad / Tecnología' },
+  { value: 'sexualidad_obscenidad',        label: 'Sexualidad / Obscenidad' },
+  { value: 'valores_institucionales',      label: 'Valores institucionales' },
+  { value: 'otro',                         label: 'Otro' },
 ];
 
 
@@ -15,10 +31,11 @@ export default function FormularioCaso() {
     fecha_inicio: '',
     desc:         '',
     gravedad:     'baja',
+    categoria:    'violencia_fisica',
   });
 
   const [estudiantePrincipal, setEstudiantePrincipal] = useState(null);
-  const [rolPrincipal, setRolPrincipal] = useState(ROLES_INVOLUCRADO[0]);
+  const [rolPrincipal, setRolPrincipal] = useState(null);
   const [otrosEstudiantes, setOtrosEstudiantes] = useState([]); // [{estudiante, rol}]
   const [archivos, setArchivos] = useState([]);
   const [loading, setLoading]   = useState(false);
@@ -39,7 +56,7 @@ export default function FormularioCaso() {
     setFormData({ ...formData, [name]: value });
   };
 
-  const agregarEstudiante = () => setOtrosEstudiantes([...otrosEstudiantes, { estudiante: null, rol: ROLES_INVOLUCRADO[0] }]);
+  const agregarEstudiante = () => setOtrosEstudiantes([...otrosEstudiantes, { estudiante: null, rol: null }]);
 
   const actualizarEstudiante = (index, campo, valor) => {
     const nuevos = [...otrosEstudiantes];
@@ -78,7 +95,7 @@ export default function FormularioCaso() {
 
       setTimeout(() => {
         setMensaje({ texto: 'Caso creado exitosamente en Panoptes.', tipo: 'success' });
-        setFormData({ fecha_inicio: '', desc: '', gravedad: 'baja' });
+        setFormData({ fecha_inicio: '', desc: '', gravedad: 'baja', categoria: 'violencia_fisica' });
         setEstudiantePrincipal(null);
         setOtrosEstudiantes([]);
         setArchivos([]);
@@ -106,6 +123,21 @@ export default function FormularioCaso() {
       )}
 
       <form onSubmit={handleSubmit} className="space-y-5">
+
+        {/* Categoría */}
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-1">Categoría del caso</label>
+          <select
+            name="categoria"
+            value={formData.categoria}
+            onChange={handleChange}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-gray-700"
+          >
+            {CATEGORIAS_CONVIVENCIA.map(c => (
+              <option key={c.value} value={c.value}>{c.label}</option>
+            ))}
+          </select>
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
@@ -150,7 +182,7 @@ export default function FormularioCaso() {
               onChange={e => setRolPrincipal(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-gray-700 text-sm"
             >
-              {ROLES_INVOLUCRADO.map(r => <option key={r} value={r}>{r}</option>)}
+              {ROLES_INVOLUCRADO.map(r => <option key={r.value ?? 'null'} value={r.value ?? ''}>{r.label}</option>)}
             </select>
           </div>
           <p className="text-xs text-gray-400 mt-1">El sistema cruzará este dato con el Sistema Curricular externo.</p>
@@ -172,11 +204,11 @@ export default function FormularioCaso() {
                     ].filter(Boolean)}
                   />
                   <select
-                    value={inv?.rol ?? ROLES_INVOLUCRADO[0]}
+                    value={inv?.rol ?? ''}
                     onChange={e => actualizarEstudiante(index, 'rol', e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-gray-700 text-sm"
                   >
-                    {ROLES_INVOLUCRADO.map(r => <option key={r} value={r}>{r}</option>)}
+                    {ROLES_INVOLUCRADO.map(r => <option key={r.value ?? 'null'} value={r.value ?? ''}>{r.label}</option>)}
                   </select>
                 </div>
                 <button type="button" onClick={() => quitarEstudiante(index)}

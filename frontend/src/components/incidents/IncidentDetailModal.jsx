@@ -313,7 +313,7 @@ export function IncidentDetailModal({ incident, onClose, onAprobar, onRechazar, 
                 title="Cerrar — el incidente volverá a pendiente">✕</button>
             </div>
             <div className="p-6 flex flex-col gap-4">
-              <p className="text-sm text-gray-500">El incidente <strong>{incident.id}</strong> fue aprobado. Ahora puedes elevarlo como un caso nuevo o asociarlo a un caso existente.</p>
+              <p className="text-sm text-gray-500">El incidente <strong>{incident.id}</strong> fue aprobado. Ahora puedes elevarlo como un caso nuevo o agregarlo como reincidencia de un caso ya abierto.</p>
               <div className="grid grid-cols-2 gap-4 mt-2">
                 <button onClick={() => setPaso("nuevo-caso")}
                   style={{ border: "2px solid #bfdbfe", borderRadius: "14px", padding: "24px 16px", background: "#eff6ff", cursor: "pointer", textAlign: "center", transition: "all 0.15s" }}
@@ -325,14 +325,14 @@ export function IncidentDetailModal({ incident, onClose, onAprobar, onRechazar, 
                   <div style={{ fontWeight: "700", color: "#1e3a7a", fontSize: "15px", marginBottom: "4px" }}>Nuevo caso</div>
                   <div style={{ fontSize: "12px", color: "#6b7280" }}>Abre un caso nuevo con este incidente como punto de partida</div>
                 </button>
-                <button onClick={() => setPaso("caso-existente")}
+                <button onClick={() => setPaso("reincidencia")}
                   style={{ border: "2px solid #bfdbfe", borderRadius: "14px", padding: "24px 16px", background: "#eff6ff", cursor: "pointer", textAlign: "center", transition: "all 0.15s" }}
                   onMouseEnter={e => e.currentTarget.style.background = "#dbeafe"}
                   onMouseLeave={e => e.currentTarget.style.background = "#eff6ff"}>
                   <svg style={{ width: "40px", height: "40px", margin: "0 auto 10px", display: "block", color: "#1e3a7a" }} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z" />
                   </svg>
-                  <div style={{ fontWeight: "700", color: "#1e3a7a", fontSize: "15px", marginBottom: "4px" }}>Incidente en caso existente</div>
+                  <div style={{ fontWeight: "700", color: "#1e3a7a", fontSize: "15px", marginBottom: "4px" }}>Reincidencia</div>
                   <div style={{ fontSize: "12px", color: "#6b7280" }}>Agrega este incidente dentro de un caso abierto</div>
                 </button>
               </div>
@@ -403,19 +403,20 @@ export function IncidentDetailModal({ incident, onClose, onAprobar, onRechazar, 
         )}
 
         {/* Paso 3b: Formulario agregar incidente a caso existente */}
-        {paso === "caso-existente" && (
+        
+        {paso === "reincidencia" && (
           <>
             <div className="flex items-center justify-between p-6 border-b-2 border-yellow-500">
               <div>
                 <button onClick={() => { setPaso("destino"); setCasoSeleccionado(null); }} className="text-xs text-blue-600 font-bold mb-1 hover:underline">← Volver</button>
-                <h2 className="text-xl font-bold text-blue-900">Agregar a caso existente</h2>
+                <h2 className="text-xl font-bold text-blue-900">Reincidencia en caso existente</h2>
               </div>
               <button onClick={handleCerrarSinGuardar}
                 className="ml-4 w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 text-lg transition-colors">✕</button>
             </div>
             <div className="overflow-y-auto p-6 flex flex-col gap-4">
               <p className="text-sm text-gray-500">
-                Casos activos donde participa alguno de los involucrados en este incidente.
+                Selecciona el caso activo al que se anexará este incidente como reincidencia.
               </p>
               <CasoBuscador involucrados={incident.involucrados ?? []} onSeleccionar={setCasoSeleccionado} />
             </div>
@@ -426,13 +427,13 @@ export function IncidentDetailModal({ incident, onClose, onAprobar, onRechazar, 
               </button>
               <button
                 disabled={!casoSeleccionado}
-                onClick={() => { alert("Incidente asociado al caso.\n(Aquí se conectará al backend.)"); onClose(); }}
+                onClick={() => { alert("Incidente agregado como reincidencia.\n(Aquí se conectará al backend.)"); onClose(); }}
                 className={`px-5 py-2.5 rounded-xl text-white font-bold text-sm transition-colors ${
                   casoSeleccionado
                     ? "bg-blue-900 hover:bg-blue-800"
                     : "bg-blue-300 cursor-not-allowed"
                 }`}>
-                Asociar al caso
+                Agregar como reincidencia
               </button>
             </div>
           </>
