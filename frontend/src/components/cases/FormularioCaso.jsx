@@ -14,18 +14,17 @@ const ROLES_INVOLUCRADO = [
 
 // Valores del enum categoria_convivencia
 const CATEGORIAS_CONVIVENCIA = [
-  { value: 'violencia_fisica',             label: 'Violencia física' },
-  { value: 'violencia_psicologica_acoso',  label: 'Violencia psicológica / Acoso' },
-  { value: 'disrupcion_desacato',          label: 'Disrupción / Desacato' },
-  { value: 'probidad_fraude',              label: 'Probidad / Fraude' },
-  { value: 'dano_infraestructura_bienes',  label: 'Daño a infraestructura o bienes' },
-  { value: 'conductas_riesgo_sustancias',  label: 'Conductas de riesgo / Sustancias' },
-  { value: 'privacidad_tecnologia',        label: 'Privacidad / Tecnología' },
-  { value: 'sexualidad_obscenidad',        label: 'Sexualidad / Obscenidad' },
-  { value: 'valores_institucionales',      label: 'Valores institucionales' },
-  { value: 'otro',                         label: 'Otro' },
+  { value: 'violencia_fisica',              label: 'Violencia física' },
+  { value: 'violencia_psicologica_acoso',   label: 'Violencia psicológica / Acoso' },
+  { value: 'disrupcion_desacato',           label: 'Disrupción / Desacato' },
+  { value: 'probidad_fraude',               label: 'Probidad / Fraude' },
+  { value: 'dano_infraestructura_bienes',   label: 'Daño a infraestructura o bienes' },
+  { value: 'conductas_riesgo_sustancias',   label: 'Conductas de riesgo / Sustancias' },
+  { value: 'privacidad_tecnologia',         label: 'Privacidad / Tecnología' },
+  { value: 'sexualidad_obscenidad',         label: 'Sexualidad / Obscenidad' },
+  { value: 'valores_institucionales',       label: 'Valores institucionales' },
+  { value: 'otro',                          label: 'Otro' },
 ];
-
 
 const USE_MOCK = false; 
 
@@ -33,7 +32,7 @@ export default function FormularioCaso() {
   const [formData, setFormData] = useState({
     fecha_inicio: '',
     desc:         '',
-    gravedad:     'baja',
+    gravedad:     'leve', // Corrección del valor por defecto del ENUM backend
     categoria:    'violencia_fisica',
   });
 
@@ -71,11 +70,6 @@ export default function FormularioCaso() {
     setOtrosEstudiantes(otrosEstudiantes.filter((_, i) => i !== index));
   };
 
-  const idsSeleccionados = [
-    estudiantePrincipal?.id_estudiante,
-    ...otrosEstudiantes.map(e => e?.estudiante?.id_estudiante),
-  ].filter(Boolean);
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -85,7 +79,7 @@ export default function FormularioCaso() {
       if (USE_MOCK) {
         await new Promise(r => setTimeout(r, 800));
         setMensaje({ texto: 'Caso creado exitosamente en Panoptes.', tipo: 'success' });
-        setFormData({ fecha_inicio: '', desc: '', gravedad: 'baja', categoria: 'violencia_fisica' });
+        setFormData({ fecha_inicio: '', desc: '', gravedad: 'leve', categoria: 'violencia_fisica' });
         setEstudiantePrincipal(null);
         setOtrosEstudiantes([]);
         setArchivos([]);
@@ -93,45 +87,75 @@ export default function FormularioCaso() {
         return;
       }
 
-      // Fetch 
-      // POST /api/operate/cases/
-      // Payload: CasoCreate { id_coordinador, desc, fecha_inicio, gravedad, categoria, estado }
-      // id_coordinador se obtiene del usuario guardado en sessionStorage al hacer login
       const token = sessionStorage.getItem('panoptes_token');
       const userRaw = sessionStorage.getItem('panoptes_user');
       const user = userRaw ? JSON.parse(userRaw) : null;
 
-      const payload = {
-        id_coordinador: user?.id_usuario ?? '',
-        desc:           formData.desc,
-        fecha_inicio:   formData.fecha_inicio,
-        gravedad:       formData.gravedad,
-        categoria:      formData.categoria,
-        estado:         'abierto',
-      };
+      // 1. Instanciar objeto FormData para transmisión multipart
+      const formDataToSend = new FormData();
+      
+      // 2. Adjuntar los campos básicos requeridos por CasoCreate
+      formDataToSend.append("id_coordinador", user?.id_usuario ?? '');
+      formDataToSend.append("desc", formData.desc);
+      formDataToSend.append("fecha_inicio", formData.fecha_inicio);
+      formDataToSend.append("gravedad", formData.gravedad);
+      formDataToSend.append("categoria", formData.categoria);
+      formDataToSend.append("estado", "abierto");
 
+      // 3. Reconstruir y serializar la estructura relacional de los estudiantes involucrados
+      const estudiantesPayload = [];
+      
+      if (estudiantePrincipal?.id_estudiante) {
+        estudiantesPayload.push({
+          id_estudiante: estudiantePrincipal.id_estudiante,
+          rol: rolPrincipal || null
+        });
+      }
+      
+      otrosEstudiantes.forEach(inv => {
+        if (inv?.estudiante?.id_estudiante) {
+          estudiantesPayload.push({
+            id_estudiante: inv.estudiante.id_estudiante,
+            rol: inv.rol || null
+          });
+        }
+      });
+      
+      formDataToSend.append("estudiantes_json", JSON.stringify(estudiantesPayload));
+
+      // 4. Inyectar los binarios de archivos recolectados en el input
+      archivos.forEach(file => {
+        formDataToSend.append("archivos", file);
+      });
+
+      // 5. Despachar la petición sin Content-Type explícito
       const res = await fetch('/api/operate/cases/', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify(payload),
+        body: formDataToSend,
       });
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        throw new Error(err.detail ?? `Error ${res.status}`);
+        const detalleError = Array.isArray(err.detail) 
+          ? JSON.stringify(err.detail, null, 2) 
+          : err.detail;
+          
+        console.error("Detalle del error de validación del Caso:", detalleError);
+        throw new Error(detalleError ?? `Error ${res.status}`);
       }
 
       setMensaje({ texto: 'Caso creado exitosamente en Panoptes.', tipo: 'success' });
-      setFormData({ fecha_inicio: '', desc: '', gravedad: 'baja', categoria: 'violencia_fisica' });
+      setFormData({ fecha_inicio: '', desc: '', gravedad: 'leve', categoria: 'violencia_fisica' });
       setEstudiantePrincipal(null);
+      setRolPrincipal(null);
       setOtrosEstudiantes([]);
       setArchivos([]);
       setLoading(false);
     } catch (error) {
-      setMensaje({ texto: 'Error al conectar con el servidor.', tipo: 'error' });
+      setMensaje({ texto: `Error al conectar con el servidor: ${error.message}`, tipo: 'error' });
       setLoading(false);
     }
   };
@@ -189,9 +213,9 @@ export default function FormularioCaso() {
               onChange={handleChange}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-gray-700"
             >
-              <option value="baja">Baja</option>
-              <option value="media">Media</option>
-              <option value="alta">Alta</option>
+              <option value="leve">Leve</option>
+              <option value="grave">Grave</option>
+              <option value="muy_grave">Muy grave</option>
             </select>
           </div>
         </div>
@@ -207,8 +231,8 @@ export default function FormularioCaso() {
           <div className="mt-2">
             <label className="block text-xs font-semibold text-gray-500 mb-1">Rol en el caso</label>
             <select
-              value={rolPrincipal}
-              onChange={e => setRolPrincipal(e.target.value)}
+              value={rolPrincipal || ''}
+              onChange={e => setRolPrincipal(e.target.value || null)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-gray-700 text-sm"
             >
               {ROLES_INVOLUCRADO.map(r => <option key={r.value ?? 'null'} value={r.value ?? ''}>{r.label}</option>)}
@@ -234,7 +258,7 @@ export default function FormularioCaso() {
                   />
                   <select
                     value={inv?.rol ?? ''}
-                    onChange={e => actualizarEstudiante(index, 'rol', e.target.value)}
+                    onChange={e => actualizarEstudiante(index, 'rol', e.target.value || null)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-gray-700 text-sm"
                   >
                     {ROLES_INVOLUCRADO.map(r => <option key={r.value ?? 'null'} value={r.value ?? ''}>{r.label}</option>)}
