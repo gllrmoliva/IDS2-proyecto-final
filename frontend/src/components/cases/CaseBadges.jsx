@@ -3,18 +3,16 @@
 // Se usan en CaseMonitorView y en el futuro CaseDetailModal.
 //
 // Props:
-//   EstadoCasoBadge = estado:   "abierto" | "en proceso" | "cerrado"
+//   EstadoCasoBadge = estado:   "abierto" | "abierto" | "cerrado"
 //   GravedadCasoBadge = gravedad: "baja" | "media" | "alta"
 
 export function EstadoCasoBadge({ estado }) {
     const map = {
-    "abierto":    "bg-blue-100 border border-blue-200",
-    "en proceso": "bg-orange-100  border border-orange-200",
-    "cerrado":    "bg-green-100  border border-green-200",
+    "abierto":  "bg-blue-100 border border-blue-200",
+    "cerrado": "bg-green-100 border border-green-200",
   };
     const label = {  // Texto visible en el badge
     "abierto": "Abierto",
-    "en proceso": "En proceso",
     "cerrado": "Cerrado",
   };
 
