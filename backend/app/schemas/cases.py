@@ -123,7 +123,7 @@ class IncidentCreate(BaseModel):
     desc: str
     fecha: date = Field(default_factory=date.today)
     estado: EstadoIncidente = Field(default=EstadoIncidente.pendiente)
-    estudiantes_ids: List[str] = Field(..., min_length=1)   # estos son los RUT
+    estudiantes: List[EstudianteRolCreate] = Field(..., min_length=1)
     categoria: CategoriaConvivencia
     documentos: List[DocumentoCreate] = Field(default_factory=list)
 
