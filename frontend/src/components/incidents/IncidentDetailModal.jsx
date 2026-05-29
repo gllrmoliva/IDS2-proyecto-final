@@ -1,28 +1,27 @@
 // IncidentDetailModal.jsx
 import { useState, useMemo } from "react";
+import { useCases } from "../../hooks/useCases";
 import { GravedadBadge, EstadoBadge } from "./IncidentBadges";
 import { formatFecha } from "../../utils/dateUtils";
 import { Section, DataRow, FormGroup } from "../shared/UIHelpers";
 
-// CasoBuscador 
-// Debe estar definido antes de ser usado en el JSX.
-// reemplazar MOCK_CASOS por fetch("/api/operate/cases/get_all")
-
-const MOCK_CASOS = [
-  { id: "CASO-001", alumno: "Valentina Rojas Soto", curso: "3°A", tipo: "Conducta agresiva reiterada" },
-  { id: "CASO-002", alumno: "Sebastián Muñoz Torres", curso: "2°B", tipo: "Daño a infraestructura" },
-  { id: "CASO-003", alumno: "Diego Herrera Lagos", curso: "1°C", tipo: "Acoso escolar (bullying)" },
-];
+// CasoBuscador
+// Usa useCases para obtener casos reales (o mock si USE_MOCK=true en useCases.js).
+// Filtra por casos abiertos donde participa alguno de los involucrados del incidente.
 
 function CasoBuscador({ involucrados = [], onSeleccionar }) {
   const [seleccionado, setSeleccionado] = useState(null);
+  const { cases } = useCases();
 
-  // Filtrar casos activos donde participa alguno de los involucrados
-  // TODO: reemplazar por fetch real a /api/operate/cases/read filtrado
+  // Filtrar casos abiertos donde participa alguno de los involucrados
   const nombresInvolucrados = involucrados.map(i => i.nombre.toLowerCase());
-  const casosRelevantes = MOCK_CASOS.filter(c =>
-    (c.estado === "abierto" || c.estado === "en proceso") &&
-    nombresInvolucrados.some(nombre => c.alumno.toLowerCase().includes(nombre.split(" ")[0].toLowerCase()))
+  const casosRelevantes = cases.filter(c =>
+    c.estado === "abierto" &&
+    c.estudiantes?.some(e =>
+      nombresInvolucrados.some(nombre =>
+        e.nombre?.toLowerCase().includes(nombre.split(" ")[0].toLowerCase())
+      )
+    )
   );
 
   return (
@@ -60,16 +59,20 @@ function CasoBuscador({ involucrados = [], onSeleccionar }) {
                   <span style={{
                     marginLeft: "8px", fontSize: "11px", fontWeight: "600",
                     padding: "2px 8px", borderRadius: "99px",
-                    background: caso.estado === "abierto" ? "#dbeafe" : "#fef3c7",
-                    color: caso.estado === "abierto" ? "#1e40af" : "#92400e",
-                  }}>{caso.estado}</span>
+                    background: "#dbeafe", color: "#1e40af",
+                  }}>Abierto</span>
                 </div>
                 {estaSeleccionado && (
                   <span style={{ color: "#1e3a7a", fontWeight: "700", fontSize: "13px" }}>✓</span>
                 )}
               </div>
-              <div style={{ fontSize: "13px", color: "#374151", marginTop: "4px", fontWeight: "500" }}>{caso.alumno}</div>
-              <div style={{ fontSize: "12px", color: "#6b7280", marginTop: "2px" }}>{caso.curso} · {caso.tipo}</div>
+              <div style={{ fontSize: "13px", color: "#374151", marginTop: "4px", fontWeight: "500" }}>
+                {caso.estudiantes?.[0]?.nombre ?? "Sin estudiante"}
+                {caso.estudiantes?.length > 1 && <span style={{ color: "#6b7280", fontSize: "12px" }}> +{caso.estudiantes.length - 1} más</span>}
+              </div>
+              <div style={{ fontSize: "12px", color: "#6b7280", marginTop: "2px" }}>
+                {caso.estudiantes?.[0]?.nombre_curso ?? "—"} · {caso.descripcion?.substring(0, 60)}{caso.descripcion?.length > 60 ? "…" : ""}
+              </div>
             </div>
           );
         })
