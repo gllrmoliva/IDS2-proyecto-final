@@ -303,10 +303,10 @@ class Caso(Base):
     )
     
     # Relación inversa explícita para la navegación de la reincidencia/acumulación (opcional pero útil)
-    incidentes_acumulados: Mapped[List["Incidente"]] = relationship(
+    incidentes: Mapped[List["Incidente"]] = relationship(
         "Incidente", 
-        foreign_keys="[Incidente.id_caso_acumulado]", 
-        back_populates="caso_acumulado"
+        foreign_keys="[Incidente.id_caso]", 
+        back_populates="caso"
     )
 
 
@@ -362,12 +362,7 @@ class Incidente(Base):
 
     id_caso: Mapped[Optional[int]] = mapped_column(
         Integer,
-        ForeignKey("Caso.id_caso", deferrable=True, initially="IMMEDIATE"),
-        unique=True,
-    )
-    id_caso_acumulado: Mapped[Optional[int]] = mapped_column(
-        Integer,
-        ForeignKey("Caso.id_caso", deferrable=True, initially="IMMEDIATE"),
+        ForeignKey("Caso.id_caso", deferrable=True, initially="IMMEDIATE")
     )
 
     estado: Mapped[EstadoIncidente] = mapped_column(
@@ -378,15 +373,11 @@ class Incidente(Base):
 
     __table_args__ = (
         CheckConstraint(
-            "id_caso IS NULL OR id_caso_acumulado IS NULL", 
-            name="mutualmente_exclusivo_ruta"
-        ),
-        CheckConstraint(
-            "estado = 'aceptado'::estado_incidente OR (id_caso IS NULL AND id_caso_acumulado IS NULL)",
+            "estado = 'aceptado'::estado_incidente OR id_caso IS NULL)",
             name="estado_incidente_1",
         ),
         CheckConstraint(
-            "estado != 'aceptado'::estado_incidente OR (id_caso IS NOT NULL OR id_caso_acumulado IS NOT NULL)",
+            "estado != 'aceptado'::estado_incidente OR id_caso IS NOT NULL)",
             name="estado_incidente_2",
         ),
         CheckConstraint(
@@ -405,8 +396,7 @@ class Incidente(Base):
     documentos: Mapped[List["Documento"]] = relationship()
     productor: Mapped["Productor"] = relationship("Productor")
     
-    caso_origen: Mapped[Optional["Caso"]] = relationship("Caso", foreign_keys=[id_caso])
-    caso_acumulado: Mapped[Optional["Caso"]] = relationship("Caso", foreign_keys=[id_caso_acumulado], back_populates="incidentes_acumulados")
+    caso: Mapped[Optional["Caso"]] = relationship("Caso", back_populates="incidentes")
 
 
 class Documento(Base):

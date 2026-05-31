@@ -91,7 +91,6 @@ class IncidentResponse(BaseModel):
     
     id_productor: str
     id_caso: Optional[int] = None
-    id_caso_acumulado: Optional[int] = None
 
     estado: EstadoIncidente
     motivo_rechazo: Optional[str] = None
@@ -129,13 +128,12 @@ class IncidentCreate(BaseModel):
 
 
 class CasoCreate(BaseModel):
-    id_coordinador: str
     estado: EstadoCaso = EstadoCaso.abierto
     fecha_inicio: date
-    fecha_cierre: Optional[date] = None
     desc: str
     gravedad: Gravedad
     categoria: CategoriaConvivencia
+    estudiantes: List[EstudianteRolCreate] = Field(default_factory=list)
 
 
 class CasoDesdeIncidenteCreate(BaseModel):

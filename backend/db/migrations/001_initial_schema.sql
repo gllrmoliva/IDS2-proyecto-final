@@ -114,17 +114,14 @@ CREATE TABLE "Incidente" (
   "gravedad" gravedad NOT NULL,
   "desc" text NOT NULL,
   "fecha" date NOT NULL,
-  "id_caso" integer UNIQUE, -- Elevación como evento originario (1:1)
-  "id_caso_acumulado" integer, -- Elevación como reincidencia anexa (N:1)
+  "id_caso" integer,
   "estado" estado_incidente NOT NULL,
   "motivo_rechazo" text,
   "categoria" categoria_convivencia NOT NULL,
-  CONSTRAINT "mutualmente_exclusivo_ruta" 
-  CHECK (id_caso IS NULL OR id_caso_acumulado IS NULL),
   CONSTRAINT "estado_incidente_1"
-  CHECK (estado = 'aceptado'::estado_incidente OR (id_caso is NULL AND id_caso_acumulado is NULL)),
+  CHECK (estado = 'aceptado'::estado_incidente OR id_caso is NULL),
   CONSTRAINT "estado_incidente_2"
-  CHECK (estado != 'aceptado'::estado_incidente OR (id_caso is not NULL OR id_caso_acumulado is not NULL)),
+  CHECK (estado != 'aceptado'::estado_incidente OR id_caso is not NULL),
   CONSTRAINT "motivo_rechazo_1"
   CHECK (estado = 'rechazado'::estado_incidente OR motivo_rechazo is NULL),
   CONSTRAINT "motivo_rechazo_2"
@@ -182,7 +179,6 @@ ALTER TABLE "Caso" ADD FOREIGN KEY ("id_coordinador") REFERENCES "Coordinador" (
 ALTER TABLE "Hito" ADD FOREIGN KEY ("id_caso") REFERENCES "Caso" ("id_caso") ON DELETE CASCADE DEFERRABLE INITIALLY IMMEDIATE;
 ALTER TABLE "Incidente" ADD FOREIGN KEY ("id_productor") REFERENCES "Productor" ("id_usuario") DEFERRABLE INITIALLY IMMEDIATE;
 ALTER TABLE "Incidente" ADD FOREIGN KEY ("id_caso") REFERENCES "Caso" ("id_caso") DEFERRABLE INITIALLY IMMEDIATE;
-ALTER TABLE "Incidente" ADD FOREIGN KEY ("id_caso_acumulado") REFERENCES "Caso" ("id_caso") DEFERRABLE INITIALLY IMMEDIATE;
 ALTER TABLE "Documento" ADD FOREIGN KEY ("id_hito") REFERENCES "Hito" ("id_hito") DEFERRABLE INITIALLY IMMEDIATE;
 ALTER TABLE "Documento" ADD FOREIGN KEY ("id_incidente") REFERENCES "Incidente" ("id_incidente") DEFERRABLE INITIALLY IMMEDIATE;
 ALTER TABLE "Documento" ADD FOREIGN KEY ("id_caso") REFERENCES "Caso" ("id_caso") DEFERRABLE INITIALLY IMMEDIATE;

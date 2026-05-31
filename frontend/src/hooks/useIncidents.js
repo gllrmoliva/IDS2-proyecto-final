@@ -13,10 +13,10 @@ const fetchDevToken = async () => {
     },
     // FastAPI requiere Form Data para el login, no JSON
     body: new URLSearchParams({
-      username: "ana.silva@colegio.cl",
-      password: "testpassword",
-      //username: "carlos.insp@colegio.cl",
-      //password: "testpassword1",
+      //username: "ana.silva@colegio.cl",
+      //password: "testpassword",
+      username: "carlos.insp@colegio.cl",
+      password: "testpassword1",
       //username: "maria.prof@colegio.cl",
       //password: "testpassword3",
     }),
