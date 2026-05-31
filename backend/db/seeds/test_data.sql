@@ -31,39 +31,39 @@ INSERT INTO "Estudiante" ("id_estudiante", "nombre", "id_curso") VALUES
 ('1000001-2', 'Pedro Gómez', 1),
 ('1000003-3', 'Diego López', 1);
 
--- Casos (Se ajusta gravedad a la nueva nomenclatura y se añade categoría)
+-- Casos
 INSERT INTO "Caso" ("id_caso", "id_coordinador", "estado", "fecha_inicio", "fecha_cierre", "desc", "gravedad", "categoria") VALUES
 (1, '11111111-1', 'abierto', '2026-05-10', NULL, 'Problemas reiterados de convivencia en sala.', 'grave', 'disrupcion_desacato'),
 (2, '11111111-1', 'cerrado', '2026-04-01', '2026-04-15', 'Daño a propiedad del colegio (ventanal).', 'muy_grave', 'dano_infraestructura_bienes');
 
--- Hitos (Se añade tipo de hito y nivel de medida)
+-- Hitos
 INSERT INTO "Hito" ("id_hito", "id_caso", "tipo", "nivel_medida", "desc", "fecha") VALUES
 (1, 1, 'tramite', NULL, 'Entrevista inicial con apoderados de Juanito.', '2026-05-12'),
 (2, 1, 'tramite', NULL, 'Derivación a convivencia escolar.', '2026-05-15'),
 (3, 2, 'medida', 'disciplinaria_n2', 'Cierre del caso con carta de compromiso.', '2026-04-15');
 
 -- Incidentes 
-INSERT INTO "Incidente" ("id_incidente", "id_productor", "gravedad", "categoria", "desc", "id_caso", "id_caso_acumulado", "estado", "motivo_rechazo", "fecha") VALUES
-(1, '22222222-2', 'leve', 'violencia_fisica', 'Pelea menor en el patio durante el recreo.', 1, NULL, 'aceptado', NULL, '2025-05-10'),            -- Elevado como Evento Originario
-(2, '33333333-3', 'grave', 'disrupcion_desacato', 'Falta de respeto grave a la profesora durante clase.', NULL, 1, 'aceptado', NULL, '2025-05-11'), -- Anexado como Acumulación/Reincidencia
-(3, '22222222-2', 'muy_grave', 'dano_infraestructura_bienes', 'Alumno rompió el ventanal con un balón.', 2, NULL, 'aceptado', NULL, '2025-05-10'),  -- Elevado como Evento Originario
-(4, '22222222-2', 'leve', 'violencia_fisica', 'Alumno empujó a su compañero del primer piso.', NULL, NULL, 'rechazado', 'Falta de pruebas', '2025-05-10'); -- Rechazado y no elevado
+INSERT INTO "Incidente" ("id_incidente", "id_productor", "gravedad", "categoria", "desc", "id_caso", "estado", "motivo_rechazo", "fecha") VALUES
+(1, '22222222-2', 'leve', 'violencia_fisica', 'Pelea menor en el patio durante el recreo.', 1, 'aceptado', NULL, '2025-05-10'),            -- Originario (Primer ID temporal)
+(2, '33333333-3', 'grave', 'disrupcion_desacato', 'Falta de respeto grave a la profesora durante clase.', 1, 'aceptado', NULL, '2025-05-11'), -- Acumulación (Mismo id_caso, ID y fecha posteriores)
+(3, '22222222-2', 'muy_grave', 'dano_infraestructura_bienes', 'Alumno rompió el ventanal con un balón.', 2, 'aceptado', NULL, '2025-05-10'),  -- Originario
+(4, '22222222-2', 'leve', 'violencia_fisica', 'Alumno empujó a su compañero del primer piso.', NULL, 'rechazado', 'Falta de pruebas', '2025-05-10'); -- Rechazado (No asignado)
 
--- Documentos
+-- Documentos 
 INSERT INTO "Documento" ("id_doc", "bucket_name", "object_key", "nombre_original", "mime_type", "size_bytes", "descripcion", "id_hito", "id_incidente", "id_caso") VALUES
-(1, 'casos-docs', '2026/05/uuid-1234-5678.pdf', 'acta_entrevista.pdf', 'application/pdf', 1048576, 'Acta firmada por apoderado', 1, NULL, NULL),
-(2, 'incidentes-docs', '2026/05/uuid-abcd-efgh.jpg', 'foto_pizarra.jpg', 'image/jpeg', 2048000, 'Foto de la evidencia en clase', 1, NULL, NULL);
+(1, 'casos-docs', '2026/05/uuid-1234-5678.pdf', 'acta_entrevista.pdf', 'application/pdf', 1048576, 'Acta firmada por apoderado', 1, NULL, NULL), -- Documento procesal (Hito)
+(2, 'incidentes-docs', '2026/05/uuid-abcd-efgh.jpg', 'foto_pizarra.jpg', 'image/jpeg', 2048000, 'Foto de la evidencia en clase', NULL, 1, NULL); -- Documento probatorio (Incidente)
 
 -- (Mappings M:N)
 
--- Estudiante_Caso (Se asignan roles definitivos de la investigación)
+-- Estudiante_Caso
 INSERT INTO "Estudiante_Caso" ("id_estudiante", "id_caso", "rol") VALUES
 ('1000000-1', 1, 'autor_agresor'),
 ('1000001-2', 1, 'complice'),
 ('1000003-3', 1, 'testigo_espectador'),
 ('1000000-1', 2, 'autor_agresor');
 
--- Estudiante_Incidente (Se asignan roles provisionales del evento)
+-- Estudiante_Incidente
 INSERT INTO "Estudiante_Incidente" ("id_estudiante", "id_incidente", "rol") VALUES
 ('1000000-1', 1, 'autor_agresor'),
 ('1000001-2', 1, 'afectado_victima'),
@@ -71,7 +71,7 @@ INSERT INTO "Estudiante_Incidente" ("id_estudiante", "id_incidente", "rol") VALU
 ('1000000-1', 3, 'autor_agresor'),
 ('1000000-1', 4, 'autor_agresor');
 
--- Estudiante_Hito (Targeting de quién es sujeto de la acción/medida)
+-- Estudiante_Hito
 INSERT INTO "Estudiante_Hito" ("id_estudiante", "id_hito") VALUES
 ('1000000-1', 1), -- Juanito es el objetivo de la entrevista
 ('1000003-3', 1), -- Diego también asiste a la entrevista

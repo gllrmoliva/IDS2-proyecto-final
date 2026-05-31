@@ -45,7 +45,7 @@ function mapCase(c) {
       ...e.estudiante, // Extrae id_estudiante, nombre, nombre_curso
       rol: e.rol ?? "Sin rol" // Conserva el rol investigativo
     })),
-    hitos:       (c.hitos ?? []).sort((a, b) => new Date(a.fecha) - new Date(b.fecha)),
+    hitos:       [...(c.hitos ?? [])].sort((a, b) => new Date(a.fecha) - new Date(b.fecha)),
   };
 }
 

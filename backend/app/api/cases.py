@@ -9,14 +9,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.crud.cases import (get_incidents_for_user, get_cases_for_user,
-                            create_incidente_completo)
+                            create_incidente_completo, create_caso_completo)
 
 from app.database.minio_client import get_minio_client
 
 from app.database.database import get_db
 from app.database.models import (
     Incidente, CategoriaConvivencia, Gravedad, EstadoIncidente,
-    EstudianteIncidente, Estudiante, Coordinador
+    EstudianteIncidente, Estudiante, Coordinador, EstadoCaso
 )
 
 from app.schemas.cases import (
@@ -134,6 +134,45 @@ def form_to_incident_schema(
         raise HTTPException(status_code=400, detail=f"Error en los datos del formulario: {str(e)}")
 
 
+def form_to_case_schema(
+    desc: str = Form(...),
+    fecha_inicio: date = Form(...),
+    gravedad: Gravedad = Form(...),
+    categoria: CategoriaConvivencia = Form(...),
+    estado: EstadoCaso = Form(default=EstadoCaso.abierto),
+    estudiantes_json: str = Form(
+        ..., 
+        description="""Lista JSON. Ej: [{"id_estudiante": "123", "rol": "autor_agresor"}]"""
+    )
+) -> CasoCreate:
+    
+    # Procesar JSON
+    try:
+        estudiantes_data = json.loads(estudiantes_json)
+        if not isinstance(estudiantes_data, list):
+            raise ValueError("El campo estudiantes_json debe ser una lista.")
+        estudiantes_in = [EstudianteRolCreate(**est) for est in estudiantes_data]
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="Formato JSON inválido en estudiantes_json.")
+    except (ValueError, ValidationError) as e:
+        raise HTTPException(status_code=400, detail=f"Error validando estudiantes: {str(e)}")
+
+    # Retornar Pydantic Schema
+    try:
+        return CasoCreate(
+            desc=desc,
+            fecha_inicio=fecha_inicio,
+            gravedad=gravedad,
+            categoria=categoria,
+            estado=estado,
+            estudiantes=estudiantes_in
+        )
+    except ValidationError as e:
+        raise HTTPException(status_code=400, detail=f"Error en los datos del formulario: {str(e)}")
+
+
+
+
 @router.post("/incidents/create", status_code=status.HTTP_201_CREATED, response_model=IncidentCreate)
 async def crear_nuevo_incidente(
     incident_in: IncidentCreate = Depends(form_to_incident_schema),
@@ -205,40 +244,54 @@ async def read_cases(current_user: Annotated[
     return await get_cases_for_user(db, current_user) 
 
 
-@router.post("/cases/", response_model=CasoResponse)
+# ---------------------------------------------------------
+# REEMPLAZA TU ENDPOINT @router.post("/cases/") POR ESTE:
+# ---------------------------------------------------------
+@router.post("/cases/", status_code=status.HTTP_201_CREATED, response_model=CasoResponse)
 async def create_case(
-    caso: CasoCreate,
+    caso_in: CasoCreate = Depends(form_to_case_schema),
+    archivos: List[UploadFile] = File(default=[]),
+    db: AsyncSession = Depends(get_db),
     current_user: Annotated[
         dict, Depends(RoleChecker(allowed_roles=["coordinador"]))
-    ],
-    db: AsyncSession = Depends(get_db)
+    ] = None
 ):
-    """Permite al Coordinador crear un caso."""
-    result = await db.execute(
-        select(Coordinador).where(Coordinador.id_usuario == caso.id_coordinador)
-    )
-    if not result.scalar_one_or_none():
-        raise HTTPException(status_code=404, detail="Coordinador no encontrado")
+    """Permite al Coordinador crear un caso con evidencia inicial y estudiantes involucrados."""
+    
+    # Autenticación en MinIO
+    try:
+        minio_client = get_minio_client(usuario=current_user.tipo_usuario)
+    except ValueError as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
-    nuevo_caso = Caso(
-        id_coordinador=caso.id_coordinador,
-        estado=caso.estado,
-        fecha_inicio=caso.fecha_inicio,
-        fecha_cierre=caso.fecha_cierre,
-        desc=caso.desc,
-        gravedad=caso.gravedad
-    )
-    db.add(nuevo_caso)
-    await db.commit()
-
-    result = await db.execute(
-        select(Caso)
-        .options(
-            selectinload(Caso.estudiantes),
-            selectinload(Caso.hitos)
+    # Delegación al CRUD
+    try:
+        nuevo_caso = await create_caso_completo(
+            db=db,
+            id_coordinador=current_user.id_usuario,
+            caso_in=caso_in,
+            archivos=archivos,
+            minio_client=minio_client
         )
-        .where(Caso.id_caso == nuevo_caso.id_caso)
-    )
-    return result.scalar_one()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error interno al crear el caso: {str(e)}")
 
+    # 3. Fetch final con Eager Loading para armar el CasoResponse
+    stmt = select(Caso).options(
+        selectinload(Caso.estudiantes)
+            .selectinload(EstudianteCaso.estudiante)
+            .selectinload(Estudiante.curso),
+        selectinload(Caso.hitos).options(
+            selectinload(Hito.documentos),
+            selectinload(Hito.estudiantes)
+        )
+    ).where(Caso.id_caso == nuevo_caso.id_caso)
+    
+    result = await db.execute(stmt)
+    caso_cargado = result.scalar_one_or_none()
+    
+    if not caso_cargado:
+        raise HTTPException(status_code=404, detail="Error al recuperar el caso creado.")
+        
+    return caso_cargado
 
