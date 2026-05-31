@@ -52,8 +52,13 @@ async def read_incidents(
     respectiva.
     """
     # Data scoping (qué usuario ve qué) es trabajo de lógica CRUD
-    return await get_incidents_for_user(db, current_user)
-
+    try:
+        return await get_incidents_for_user(db, current_user)
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error interno del servidor: {str(e)}"
+        )
 
 @router.post("/incidents/{id_incidente}/elevar", response_model=IncidentResponse)
 async def elevar_incidente_endpoint(

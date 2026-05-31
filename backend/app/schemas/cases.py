@@ -20,7 +20,7 @@ class DocumentoResponse(BaseModel):
     mime_type: str
     size_bytes: int
     descripcion: str
-    id_hito: int
+    id_hito: Optional[int] = None
     id_incidente: Optional[int] = None
 
     model_config = ConfigDict(from_attributes=True)
