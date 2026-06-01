@@ -84,7 +84,7 @@ export default function FormularioIncidente() {
     setMensaje({ texto: '', tipo: '' });
 
     try {
-      if (USE_MOCK) { /* ... lógica de mock igual ... */ }
+      if (USE_MOCK) {  }
 
       const token = sessionStorage.getItem('panoptes_token') || activeToken; // Asegura tener el token
 
@@ -189,9 +189,9 @@ export default function FormularioIncidente() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">Fecha y Hora</label>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">Fecha</label>
             <input
-              type="datetime-local"
+              type="date"
               name="fecha"
               required
               value={formData.fecha}
@@ -305,7 +305,12 @@ export default function FormularioIncidente() {
             <ul className="mt-2 flex flex-col gap-1">
               {archivos.map((archivo, i) => (
                 <li key={i} className="flex items-center justify-between px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700">
-                  <span className="truncate max-w-xs">{archivo.name}</span>
+                  <a
+                    href={URL.createObjectURL(archivo)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="truncate max-w-xs text-blue-600 hover:underline text-left"
+                  >{archivo.name}</a>
                   <button type="button" onClick={() => quitarArchivo(i)}
                     className="ml-2 text-red-400 hover:text-red-600 font-bold flex-shrink-0">✕</button>
                 </li>

@@ -2,19 +2,30 @@
 // Panel de filtros para la vista de monitoreo de casos.
 // Mismo patrón que IncidentFilters.jsx.
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { CASE_FILTER_OPTIONS, CASE_INITIAL_FILTERS } from "../../data/mockCases";
 
 const GRAVEDADES_FILTER = [
-  { value: "todas", label: "Todas" },
-  { value: "baja",  label: "Baja" },
-  { value: "media", label: "Media" },
-  { value: "alta",  label: "Alta" },
+  { value: "todas",     label: "Todas" },
+  { value: "leve",      label: "Baja" },
+  { value: "grave",     label: "Media" },
+  { value: "muy_grave", label: "Alta" },
 ];
 
 export function CaseFilters({ filters, onChange }) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(filters);
+  const [cursos, setCursos] = useState(["todos"]);
+
+  useEffect(() => {
+    const token = sessionStorage.getItem("panoptes_token");
+    fetch("/api/students/courses/get_all", {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(r => r.ok ? r.json() : [])
+      .then(data => setCursos(["todos", ...data.map(c => c.nombre_curso)]))
+      .catch(() => {});
+  }, []);
 
   const handleDraft = (key) => (e) => setDraft({ ...draft, [key]: e.target.value });
   const handleFiltrar = () => { onChange({ ...draft, search: filters.search }); setOpen(false); };
@@ -51,7 +62,7 @@ export function CaseFilters({ filters, onChange }) {
               <button onClick={() => setOpen(false)} className="w-7 h-7 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 text-sm">✕</button>
             </div>
             <div className="flex flex-wrap gap-4 items-end">
-              {[["Estado", "estado", CASE_FILTER_OPTIONS.estados], ["Curso", "curso", CASE_FILTER_OPTIONS.cursos]].map(([label, key, opts]) => (
+              {[["Estado", "estado", CASE_FILTER_OPTIONS.estados], ["Curso", "curso", cursos]].map(([label, key, opts]) => (
                 <div key={key} className="flex flex-col gap-1">
                   <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">{label}</label>
                   <select value={draft[key]} onChange={handleDraft(key)}
