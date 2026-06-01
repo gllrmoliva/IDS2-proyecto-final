@@ -7,7 +7,7 @@
 INSERT INTO "Usuario" ("id_usuario", "nombre", "email", "tipo_usuario", "es_activo", "hashed_password") VALUES
 ('11111111-1', 'Ana Silva', 'ana.silva@colegio.cl', 'coordinador', true, '$argon2id$v=19$m=65536,t=3,p=4$v3g6v5o560tjei3d67pLsQ$vOG7SLI/xcihRYXn22f7YP0W1WbKNiEtmK9Y7b/ICcs'), -- testpassword
 ('22222222-2', 'Carlos Sanhueza', 'carlos.insp@colegio.cl', 'productor', true, '$argon2id$v=19$m=65536,t=3,p=4$BflesKr+5JiHE5V+bRbFqA$2mezGOPsMDqHO16+DSVuUB58rK2IH46fdRVozwspmwk'), -- testpassword1
-('33333333-3', 'Roberto Delgado', 'roberto.insp@colegio.cl', 'productor', true, '$argon2id$v=19$m=65536,t=3,p=4$FyiE2qJzZT1ZpHoTEYJGMA$3dsMiTCWLpacLN8kjenmWs3etybelYO1Pw4m0zfm5Hk'), -- testpassword2
+('33333333-3', 'Roberto Delgado', 'roberto.insp@colegio.cl', 'profesor_jefe', true, '$argon2id$v=19$m=65536,t=3,p=4$FyiE2qJzZT1ZpHoTEYJGMA$3dsMiTCWLpacLN8kjenmWs3etybelYO1Pw4m0zfm5Hk'), -- testpassword2
 ('44444444-4', 'María Hernández', 'maria.prof@colegio.cl', 'profesor_jefe', true, '$argon2id$v=19$m=65536,t=3,p=4$UzwZMput7ak/9hFKEl+5Kw$XnnDqt1P9maO8I1p+EX9EuQyhs76Lta4Hou04TjoXOM'), -- testpassword3
 ('55555555-5', 'Usuario Eliminado', 'borrado@colegio.cl', 'productor', false, '$argon2id$v=19$m=65536,t=3,p=4$K03wg1do6eLZ9TvNPIChLg$ezRhAEPXdpPd5DuCO3NQnoL5wdZzG7H5IXWmREFauRk'); -- nosGustaMucho
 
@@ -21,15 +21,37 @@ INSERT INTO "Productor" ("id_usuario") VALUES
 ('55555555-5');
 
 INSERT INTO "ProfesorJefe" ("id_usuario") VALUES ('44444444-4');
+INSERT INTO "ProfesorJefe" ("id_usuario") VALUES ('33333333-3');
 
 -- 3. CORE DOMAIN ENTITIES
 INSERT INTO "Curso" ("id_curso", "nombre_curso", "id_pj") VALUES
-(1, '1 Medio A', '44444444-4');
+(1, '1 Medio A', '44444444-4'),
+(2, '1 Medio B', '33333333-3');
 
 INSERT INTO "Estudiante" ("id_estudiante", "nombre", "id_curso") VALUES
+-- Curso 1: 1 Medio A (10 estudiantes)
 ('1000000-1', 'Juan Pérez', 1),
-('1000001-2', 'Pedro Gómez', 1),
-('1000003-3', 'Diego López', 1);
+('1000003-3', 'Diego López', 1),
+('1000004-4', 'Ana Silva', 1),
+('1000005-5', 'Luis Rojas', 1),
+('1000006-6', 'María Castro', 1),
+('1000007-7', 'Jorge Soto', 1),
+('1000008-8', 'Camila Vega', 1),
+('2000002-2', 'Martina Fernández', 1),
+('1000009-9', 'Mateo Morales', 1),
+('1000010-0', 'Sofía Ramírez', 1),
+
+-- Curso 2: 1 Medio B (10 estudiantes)
+('2000001-1', 'Lucas Herrera', 2),
+('1000001-2', 'Pedro Gómez', 2),
+('2000003-3', 'Benjamín Díaz', 2),
+('2000004-4', 'Isabella Álvarez', 2),
+('2000005-5', 'Joaquín Muñoz', 2),
+('2000006-6', 'Valeria Romero', 2),
+('2000007-7', 'Tomás Gutiérrez', 2),
+('2000008-8', 'Catalina Ruiz', 2),
+('2000009-9', 'Maximiliano Navarro', 2),
+('2000010-0', 'Florencia Torres', 2);
 
 -- Casos
 INSERT INTO "Caso" ("id_caso", "id_coordinador", "estado", "fecha_inicio", "fecha_cierre", "desc", "gravedad", "categoria") VALUES
