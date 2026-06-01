@@ -9,25 +9,25 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.crud.cases import (get_incidents_for_user, get_cases_for_user,
-                            create_incidente_completo)
+                            create_incidente_completo, elevar_incidente)
 
 from app.database.minio_client import get_minio_client
 
 from app.database.database import get_db
 from app.database.models import (
-    Incidente, CategoriaConvivencia, Gravedad, EstadoIncidente,
-    EstudianteIncidente, Estudiante, Coordinador
-)
+        Incidente, CategoriaConvivencia, Gravedad, EstadoIncidente,
+        EstudianteIncidente, Estudiante, Coordinador, Caso
+        )
 
 from app.schemas.cases import (
-    CasoCreate,
-    CasoResponse,
-    IncidentResponse,
-    ElevacionIncidenteRequest,
-    EstudianteRolCreate,
-    IncidentCreate
+        CasoCreate,
+        CasoResponse,
+        IncidentResponse,
+        ElevacionIncidenteRequest,
+        EstudianteRolCreate,
+        IncidentCreate
 
-)
+        )
 
 from app.exceptions import EntityNotFoundError, BusinessLogicError
 from app.api.deps import RoleChecker
@@ -41,11 +41,11 @@ router = APIRouter(prefix="/operate", tags=["Controlador de casos de convivencia
 
 @router.get("/incidents/read", response_model=List[IncidentResponse])
 async def read_incidents(
-    current_user: Annotated[
-        dict, Depends(RoleChecker(allowed_roles=["coordinador", "productor", "profesor_jefe"]))
-    ],
-    db: AsyncSession = Depends(get_db)
-):
+        current_user: Annotated[
+            dict, Depends(RoleChecker(allowed_roles=["coordinador", "productor", "profesor_jefe"]))
+            ],
+        db: AsyncSession = Depends(get_db)
+        ):
     """
     Función para leer incidentes, se encarga de permisos (en este caso todos tienen acceso a este endpoint)
     a través de una dependencia en RoleChecker. Lógica de data-scoping se delega a CRUD; ver función
@@ -56,19 +56,20 @@ async def read_incidents(
         return await get_incidents_for_user(db, current_user)
     except Exception as e:
         raise HTTPException(
-            status_code=500,
-            detail=f"Error interno del servidor: {str(e)}"
-        )
+                status_code=500,
+                detail=f"Error interno del servidor: {str(e)}"
+                )
+
 
 @router.post("/incidents/{id_incidente}/elevar", response_model=IncidentResponse)
 async def elevar_incidente_endpoint(
-    id_incidente: int,
-    payload: ElevacionIncidenteRequest,
-    current_user: Annotated[
-        dict, Depends(RoleChecker(allowed_roles=["coordinador"]))
-    ],
-    db: AsyncSession = Depends(get_db)
-):
+        id_incidente: int,
+        payload: ElevacionIncidenteRequest,
+        current_user: Annotated[
+            dict, Depends(RoleChecker(allowed_roles=["coordinador"]))
+            ],
+        db: AsyncSession = Depends(get_db)
+        ):
     """
     Eleva un Incidente pendiente. 
     Solo permitido para el rol 'coordinador'.
@@ -77,42 +78,42 @@ async def elevar_incidente_endpoint(
     try:
         # Extraer id_usuario dependiendo si current_user es un dict o un modelo Pydantic/SQLAlchemy
         id_coordinador = current_user.get("id_usuario") if isinstance(current_user, dict) else current_user.id_usuario
-        
+
         incidente_actualizado = await elevar_incidente(
-            db=db, 
-            id_incidente=id_incidente, 
-            id_coordinador=id_coordinador, 
-            payload=payload
-        )
+                db=db,
+                id_incidente=id_incidente,
+                id_coordinador=id_coordinador,
+                payload=payload
+                )
         return incidente_actualizado
 
     except EntityNotFoundError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
-        
+
     except BusinessLogicError as e:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
 
 
 # TODO: Si esto es una dependencia, debería ir en deps.py
 def form_to_incident_schema(
-    gravedad: Gravedad = Form(...),
-    desc: str = Form(...),
-    fecha: date = Form(default_factory=date.today),
-    categoria: CategoriaConvivencia = Form(...),
-    estudiantes_json: str = Form(
-        ..., 
-        description="""Lista JSON. Ej: [{"id_estudiante": "123", "rol": "autor_agresor"}]"""
-    )
-) -> IncidentCreate:
-    
+        gravedad: Gravedad = Form(...),
+        desc: str = Form(...),
+        fecha: date = Form(default_factory=date.today),
+        categoria: CategoriaConvivencia = Form(...),
+        estudiantes_json: str = Form(
+            ..., 
+            description="""Lista JSON. Ej: [{"id_estudiante": "123", "rol": "autor_agresor"}]"""
+            )
+        ) -> IncidentCreate:
+
     # 1. Procesamos el JSON de estudiantes
     try:
         estudiantes_data = json.loads(estudiantes_json)
         if not isinstance(estudiantes_data, list):
             raise ValueError("El campo estudiantes_json debe ser una lista.")
-        
+
         estudiantes_in = [EstudianteRolCreate(**est) for est in estudiantes_data]
-        
+
     except json.JSONDecodeError:
         raise HTTPException(status_code=400, detail="Formato JSON inválido en estudiantes_json.")
     except (ValueError, ValidationError) as e:
@@ -121,14 +122,14 @@ def form_to_incident_schema(
     # 2. Retornamos tu esquema Pydantic listo y validado
     try:
         return IncidentCreate(
-            gravedad=gravedad,
-            desc=desc,
-            fecha=fecha,
-            categoria=categoria,
-            estudiantes=estudiantes_in
-            # 'estado' tomará tu default (EstadoIncidente.pendiente)
-            # 'documentos' tomará tu default_factory (lista vacía)
-        )
+                gravedad=gravedad,
+                desc=desc,
+                fecha=fecha,
+                categoria=categoria,
+                estudiantes=estudiantes_in
+                # 'estado' tomará tu default (EstadoIncidente.pendiente)
+                # 'documentos' tomará tu default_factory (lista vacía)
+                )
     except ValidationError as e:
         # Esto atrapará si, por ejemplo, min_length=1 falla porque la lista está vacía
         raise HTTPException(status_code=400, detail=f"Error en los datos del formulario: {str(e)}")
@@ -136,14 +137,14 @@ def form_to_incident_schema(
 
 @router.post("/incidents/create", status_code=status.HTTP_201_CREATED, response_model=IncidentCreate)
 async def crear_nuevo_incidente(
-    incident_in: IncidentCreate = Depends(form_to_incident_schema),
-    archivos: List[UploadFile] = File(default=[]),
-    db: AsyncSession = Depends(get_db),
-    # Quitamos minio_client de aquí
-    current_user: Annotated[
-        dict, Depends(RoleChecker(allowed_roles=["productor", "profesor_jefe"]))
-    ] = None
-):
+        incident_in: IncidentCreate = Depends(form_to_incident_schema),
+        archivos: List[UploadFile] = File(default=[]),
+        db: AsyncSession = Depends(get_db),
+        # Quitamos minio_client de aquí
+        current_user: Annotated[
+            dict, Depends(RoleChecker(allowed_roles=["productor", "profesor_jefe"]))
+            ] = None
+        ):
     # Instanciamos el cliente MinIO manualmente usando el rol del usuario
     try:
         minio_client = get_minio_client(usuario=current_user.tipo_usuario)
@@ -153,33 +154,33 @@ async def crear_nuevo_incidente(
     try:
         # Pasamos los datos del esquema a tu función creadora
         nuevo_incidente = await create_incidente_completo(
-            db=db,
-            id_productor=current_user.id_usuario, 
-            desc=incident_in.desc,
-            gravedad=incident_in.gravedad.value,
-            categoria=incident_in.categoria.value,
-            fecha=incident_in.fecha,
-            estado=incident_in.estado.value,
-            estudiantes_in=incident_in.estudiantes, 
-            archivos=archivos, 
-            minio_client=minio_client # Le pasamos la instancia que acabamos de crear
-        )
+                db=db,
+                id_productor=current_user.id_usuario, 
+                desc=incident_in.desc,
+                gravedad=incident_in.gravedad.value,
+                categoria=incident_in.categoria.value,
+                fecha=incident_in.fecha,
+                estado=incident_in.estado.value,
+                estudiantes_in=incident_in.estudiantes, 
+                archivos=archivos, 
+                minio_client=minio_client # Le pasamos la instancia que acabamos de crear
+                )
     # ... resto de tu código ...
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error interno al crear el incidente: {str(e)}")
 
     # 3. Fetch final con Eager Loading para armar la respuesta
     stmt = select(Incidente).options(
-        selectinload(Incidente.productor),
-        selectinload(Incidente.documentos),
-        selectinload(Incidente.estudiantes)
+            selectinload(Incidente.productor),
+            selectinload(Incidente.documentos),
+            selectinload(Incidente.estudiantes)
             .selectinload(EstudianteIncidente.estudiante)
             .selectinload(Estudiante.curso)
-    ).where(Incidente.id_incidente == nuevo_incidente.id_incidente)
-    
+            ).where(Incidente.id_incidente == nuevo_incidente.id_incidente)
+
     result = await db.execute(stmt)
     incidente_cargado = result.scalar_one_or_none()
-    
+
     if not incidente_cargado:
         raise HTTPException(status_code=404, detail="Error al recuperar el incidente creado.")
 
@@ -196,8 +197,8 @@ async def crear_nuevo_incidente(
 
 @router.get("/cases/read", response_model=List[CasoResponse])
 async def read_cases(current_user: Annotated[
-        dict, Depends(RoleChecker(allowed_roles=["coordinador", "profesor_jefe"]))],
-        db: AsyncSession = Depends(get_db)):
+    dict, Depends(RoleChecker(allowed_roles=["coordinador", "profesor_jefe"]))],
+                     db: AsyncSession = Depends(get_db)):
     """
     Función para leer casos, se encarga de permisos (en este caso solo coordinador tiene acceso a este endpoint)
     a través de una dependencia en RoleChecker. 
@@ -207,38 +208,36 @@ async def read_cases(current_user: Annotated[
 
 @router.post("/cases/", response_model=CasoResponse)
 async def create_case(
-    caso: CasoCreate,
-    current_user: Annotated[
-        dict, Depends(RoleChecker(allowed_roles=["coordinador"]))
-    ],
-    db: AsyncSession = Depends(get_db)
-):
+        caso: CasoCreate,
+        current_user: Annotated[
+            dict, Depends(RoleChecker(allowed_roles=["coordinador"]))
+            ],
+        db: AsyncSession = Depends(get_db)
+        ):
     """Permite al Coordinador crear un caso."""
     result = await db.execute(
-        select(Coordinador).where(Coordinador.id_usuario == caso.id_coordinador)
-    )
+            select(Coordinador).where(Coordinador.id_usuario == caso.id_coordinador)
+            )
     if not result.scalar_one_or_none():
         raise HTTPException(status_code=404, detail="Coordinador no encontrado")
 
     nuevo_caso = Caso(
-        id_coordinador=caso.id_coordinador,
-        estado=caso.estado,
-        fecha_inicio=caso.fecha_inicio,
-        fecha_cierre=caso.fecha_cierre,
-        desc=caso.desc,
-        gravedad=caso.gravedad
-    )
+            id_coordinador=caso.id_coordinador,
+            estado=caso.estado,
+            fecha_inicio=caso.fecha_inicio,
+            fecha_cierre=caso.fecha_cierre,
+            desc=caso.desc,
+            gravedad=caso.gravedad
+            )
     db.add(nuevo_caso)
     await db.commit()
 
     result = await db.execute(
-        select(Caso)
-        .options(
-            selectinload(Caso.estudiantes),
-            selectinload(Caso.hitos)
-        )
-        .where(Caso.id_caso == nuevo_caso.id_caso)
-    )
+            select(Caso)
+            .options(
+                selectinload(Caso.estudiantes),
+                selectinload(Caso.hitos)
+                )
+            .where(Caso.id_caso == nuevo_caso.id_caso)
+            )
     return result.scalar_one()
-
-
