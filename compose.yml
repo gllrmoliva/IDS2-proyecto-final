@@ -15,6 +15,7 @@ services:
     volumes:
       - ./backend/app:/backend/app
       - ./backend/db:/backend/db
+      - ./backend/tests:/backend/tests
 
   db:
     image: postgres:16-alpine
