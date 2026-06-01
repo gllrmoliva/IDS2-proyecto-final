@@ -13,10 +13,10 @@ const fetchDevToken = async () => {
     },
     // FastAPI requiere Form Data para el login, no JSON
     body: new URLSearchParams({
-      // username: "ana.silva@colegio.cl",
-      // password: "testpassword",
-      username: "carlos.insp@colegio.cl",
-      password: "testpassword1",
+      username: "ana.silva@colegio.cl",
+      password: "testpassword",
+      //username: "carlos.insp@colegio.cl",
+      //password: "testpassword1",
       //username: "maria.prof@colegio.cl",
       //password: "testpassword3",
     }),
@@ -81,7 +81,7 @@ const fetchFromAPI = async (token) => {
 
 // PATCH para cambiar estado
 async function patchIncidentEstado(idIncidente, estado, motivoRechazo = null, token) {
-  const res = await fetch(`/api/operate/incidents/${idIncidente}`, {
+  const res = await fetch(`/api/operate/incidents/${idIncidente}/estado`, {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",
@@ -93,6 +93,23 @@ async function patchIncidentEstado(idIncidente, estado, motivoRechazo = null, to
     }),
   });
   if (!res.ok) throw new Error(`Error ${res.status} al actualizar incidente`);
+  return res.json();
+}
+
+// POST para elevar incidente
+async function postElevarIncidente(idIncidente, payload, token) {
+  const res = await fetch(`/api/operate/incidents/${idIncidente}/elevar`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail ?? `Error ${res.status} al elevar incidente`);
+  }
   return res.json();
 }
 
@@ -165,5 +182,24 @@ export function useIncidents(initialToken = null) {
     }
   }, [incidents, updateLocal, activeToken]);
 
-  return { incidents, loading, error, reload: load, updateLocal, handleAprobar, handleRechazar, handleRevertir };
+  const handleElevar = useCallback(async (id, payload) => {
+    const inc = incidents.find(i => i.id === id);
+    if (!USE_MOCK && inc?._id_incidente) {
+      await postElevarIncidente(inc._id_incidente, payload, activeToken);
+      // Opcional: recargar para que el incidente muestre su nuevo id_caso
+      // load();
+    }
+  }, [incidents, activeToken]);
+
+  return { 
+    incidents, 
+    loading, 
+    error, 
+    reload: load, 
+    updateLocal, 
+    handleAprobar, 
+    handleRechazar, 
+    handleRevertir,
+    handleElevar // Exportar nueva función
+  };
 }

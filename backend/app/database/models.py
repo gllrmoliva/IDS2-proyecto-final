@@ -112,7 +112,10 @@ class EstudianteCaso(Base):
         ForeignKey("Caso.id_caso", ondelete="CASCADE", deferrable=True, initially="IMMEDIATE"), 
         primary_key=True
     )
-    rol: Mapped[Optional[RolInvolucrado]] = mapped_column()
+    rol: Mapped[Optional[RolInvolucrado]] = mapped_column(
+        Enum(RolInvolucrado, name="rol_involucrado", create_type=True),
+        nullable=True
+    )
 
     estudiante: Mapped["Estudiante"] = relationship(back_populates="casos")
     caso: Mapped["Caso"] = relationship(back_populates="estudiantes")
@@ -288,12 +291,24 @@ class Caso(Base):
         ForeignKey("Coordinador.id_usuario", deferrable=True, initially="IMMEDIATE"),
         nullable=False,
     )
-    estado: Mapped[EstadoCaso] = mapped_column(nullable=False)
+    estado: Mapped[EstadoCaso] = mapped_column(
+        Enum(EstadoCaso, name="estado_caso", create_type=True),
+        nullable=False,
+        default=EstadoCaso.abierto
+    )
+
+    categoria: Mapped[CategoriaConvivencia] = mapped_column(
+        Enum(CategoriaConvivencia, name="categoria_convivencia", create_type=True),
+        nullable=False
+    )
+
+    gravedad: Mapped[Gravedad] = mapped_column(
+        Enum(Gravedad, name="gravedad", create_type=True),
+        nullable=False
+    )
     fecha_inicio: Mapped[date] = mapped_column(Date, nullable=False)
     fecha_cierre: Mapped[Optional[date]] = mapped_column(Date)
     desc: Mapped[str] = mapped_column(Text, nullable=False)
-    gravedad: Mapped[Gravedad] = mapped_column(nullable=False)
-    categoria: Mapped[CategoriaConvivencia] = mapped_column(nullable=False)
 
     estudiantes: Mapped[List["EstudianteCaso"]] = relationship(
         back_populates="caso", cascade="all, delete-orphan"
@@ -303,10 +318,10 @@ class Caso(Base):
     )
     
     # Relación inversa explícita para la navegación de la reincidencia/acumulación (opcional pero útil)
-    incidentes_acumulados: Mapped[List["Incidente"]] = relationship(
+    incidentes: Mapped[List["Incidente"]] = relationship(
         "Incidente", 
-        foreign_keys="[Incidente.id_caso_acumulado]", 
-        back_populates="caso_acumulado"
+        foreign_keys="[Incidente.id_caso]", 
+        back_populates="caso"
     )
 
 
@@ -348,7 +363,7 @@ class Incidente(Base):
                                               autoincrement=True)
     id_productor: Mapped[str] = mapped_column(
         String,
-        ForeignKey("Productor.id_usuario", deferrable=True, initially="IMMEDIATE"),
+        ForeignKey("Usuario.id_usuario", deferrable=True, initially="IMMEDIATE"), # TODO: Cambiar a Productor.id_usuario con coordinador heredando de productor.
         nullable=False,
     )
     gravedad: Mapped[Gravedad] = mapped_column(nullable=False)
@@ -362,12 +377,7 @@ class Incidente(Base):
 
     id_caso: Mapped[Optional[int]] = mapped_column(
         Integer,
-        ForeignKey("Caso.id_caso", deferrable=True, initially="IMMEDIATE"),
-        unique=True,
-    )
-    id_caso_acumulado: Mapped[Optional[int]] = mapped_column(
-        Integer,
-        ForeignKey("Caso.id_caso", deferrable=True, initially="IMMEDIATE"),
+        ForeignKey("Caso.id_caso", deferrable=True, initially="IMMEDIATE")
     )
 
     estado: Mapped[EstadoIncidente] = mapped_column(
@@ -378,15 +388,11 @@ class Incidente(Base):
 
     __table_args__ = (
         CheckConstraint(
-            "id_caso IS NULL OR id_caso_acumulado IS NULL", 
-            name="mutualmente_exclusivo_ruta"
-        ),
-        CheckConstraint(
-            "estado = 'aceptado'::estado_incidente OR (id_caso IS NULL AND id_caso_acumulado IS NULL)",
+            "estado = 'aceptado'::estado_incidente OR id_caso IS NULL)",
             name="estado_incidente_1",
         ),
         CheckConstraint(
-            "estado != 'aceptado'::estado_incidente OR (id_caso IS NOT NULL OR id_caso_acumulado IS NOT NULL)",
+            "estado != 'aceptado'::estado_incidente OR id_caso IS NOT NULL)",
             name="estado_incidente_2",
         ),
         CheckConstraint(
@@ -403,10 +409,9 @@ class Incidente(Base):
         back_populates="incidente", cascade="all, delete-orphan"
     )
     documentos: Mapped[List["Documento"]] = relationship()
-    productor: Mapped["Productor"] = relationship("Productor")
+    productor: Mapped["Usuario"] = relationship("Usuario")
     
-    caso_origen: Mapped[Optional["Caso"]] = relationship("Caso", foreign_keys=[id_caso])
-    caso_acumulado: Mapped[Optional["Caso"]] = relationship("Caso", foreign_keys=[id_caso_acumulado], back_populates="incidentes_acumulados")
+    caso: Mapped[Optional["Caso"]] = relationship("Caso", back_populates="incidentes")
 
 
 class Documento(Base):

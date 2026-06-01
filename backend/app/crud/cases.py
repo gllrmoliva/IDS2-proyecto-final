@@ -11,9 +11,9 @@ from app.database.models import (
     EstadoCaso,
     EstudianteCaso,
     EstudianteIncidente,
-    Documento# Importación requerida para enrutar el ORM
+    Documento
 )
-from app.schemas.cases import ElevacionIncidenteRequest, IncidentCreate, EstudianteRolCreate
+from app.schemas.cases import ElevacionIncidenteRequest, IncidentCreate, EstudianteRolCreate, CasoCreate, IncidentUpdateEstado
 from app.exceptions import EntityNotFoundError, BusinessLogicError
 import uuid
 from datetime import datetime
@@ -26,8 +26,7 @@ async def get_incidents_for_user(db: AsyncSession, user):
     # Eager loading: la ruta es Incidente -> EstudianteIncidente -> Estudiante -> Curso
     stmt = select(Incidente).options(
         selectinload(Incidente.productor),
-        selectinload(Incidente.caso_origen),
-        selectinload(Incidente.caso_acumulado),
+        selectinload(Incidente.caso),
         selectinload(Incidente.documentos),
         selectinload(Incidente.estudiantes)
         .selectinload(EstudianteIncidente.estudiante)
@@ -78,79 +77,6 @@ async def get_cases_for_user(db: AsyncSession, user):
 
     return result.scalars().unique().all()
 
-
-async def elevar_incidente(
-    db: AsyncSession, 
-    id_incidente: int, 
-    id_coordinador: str, 
-    payload: ElevacionIncidenteRequest
-) -> Incidente:
-    
-    # Obtener incidente usando la relación .estudiantes (ya no estudiantes_asociados)
-    stmt_incidente = select(Incidente).options(
-        selectinload(Incidente.estudiantes)
-    ).where(Incidente.id_incidente == id_incidente)
-    
-    result_inc = await db.execute(stmt_incidente)
-    incidente = result_inc.scalar_one_or_none()
-    
-    if not incidente:
-        raise EntityNotFoundError("Incidente no encontrado.")
-    
-    if incidente.id_caso is not None or incidente.id_caso_acumulado is not None:
-        raise BusinessLogicError("El incidente ya ha sido procesado (elevado o acumulado).")
-
-    # Vía A: Elevación como Evento Originario (Nuevo Caso)
-    if payload.tipo_elevacion == "nuevo_caso":
-        if not payload.nuevo_caso:
-            raise BusinessLogicError("Faltan los datos (nuevo_caso) para crear la investigación.")
-        
-        db_caso = Caso(
-            id_coordinador=id_coordinador,
-            estado=EstadoCaso.abierto,
-            fecha_inicio=payload.nuevo_caso.fecha_inicio,
-            desc=payload.nuevo_caso.desc,
-            gravedad=payload.nuevo_caso.gravedad,
-            categoria=payload.nuevo_caso.categoria
-        )
-        db.add(db_caso)
-        await db.flush() 
-        
-        # Heredar roles al nuevo caso iterando sobre la propiedad sin sufijo
-        for est_inc in incidente.estudiantes:
-            nuevo_est_caso = EstudianteCaso(
-                id_estudiante=est_inc.id_estudiante,
-                id_caso=db_caso.id_caso,
-                rol=est_inc.rol
-            )
-            db.add(nuevo_est_caso)
-        
-        incidente.id_caso = db_caso.id_caso
-        incidente.estado = EstadoIncidente.aceptado
-
-    # Vía B: Elevación por Reincidencia (Acumulación)
-    elif payload.tipo_elevacion == "acumulacion":
-        if not payload.id_caso_acumulado:
-            raise BusinessLogicError("Debe especificar el id_caso_acumulado.")
-        
-        stmt_caso = select(Caso).where(Caso.id_caso == payload.id_caso_acumulado)
-        result_caso = await db.execute(stmt_caso)
-        caso_destino = result_caso.scalar_one_or_none()
-        
-        if not caso_destino:
-            raise EntityNotFoundError("Caso destino no encontrado.")
-        
-        if caso_destino.estado != EstadoCaso.abierto:
-            raise BusinessLogicError("No se puede anexar incidentes a un caso cerrado.")
-            
-        incidente.id_caso_acumulado = caso_destino.id_caso
-        incidente.estado = EstadoIncidente.aceptado
-
-    # 4. Confirmar Transacción
-    await db.commit()
-    await db.refresh(incidente)
-    
-    return incidente
 
 async def create_incidente_completo(
     db: AsyncSession,
@@ -223,5 +149,225 @@ async def create_incidente_completo(
 
     # 4. Confirmar toda la operación en la base de datos
     await db.commit()
-    await db.refresh(nuevo_incidente)
     return nuevo_incidente
+
+
+async def elevar_incidente(
+    db: AsyncSession, 
+    id_incidente: int, 
+    id_coordinador: str, 
+    payload: ElevacionIncidenteRequest
+) -> Incidente:
+    stmt_incidente = select(Incidente).options(
+        selectinload(Incidente.productor),
+        selectinload(Incidente.documentos),
+        selectinload(Incidente.estudiantes)
+            .selectinload(EstudianteIncidente.estudiante)
+            .selectinload(Estudiante.curso)
+    ).where(Incidente.id_incidente == id_incidente)
+    
+    result_inc = await db.execute(stmt_incidente)
+    incidente = result_inc.scalar_one_or_none()
+    
+    if not incidente:
+        raise EntityNotFoundError("Incidente no encontrado.")
+    
+    if incidente.id_caso is not None:
+        raise BusinessLogicError("El incidente ya ha sido procesado e ingresado a un caso.")
+
+    # Vía A: Elevación como Evento Originario (Nuevo Caso)
+    if payload.tipo_elevacion == "nuevo_caso":
+        if not payload.nuevo_caso:
+            raise BusinessLogicError("Faltan los datos (nuevo_caso) para crear la investigación.")
+        
+        db_caso = Caso(
+            id_coordinador=id_coordinador,
+            estado=EstadoCaso.abierto,
+            fecha_inicio=payload.nuevo_caso.fecha_inicio,
+            desc=payload.nuevo_caso.desc,
+            gravedad=payload.nuevo_caso.gravedad,
+            categoria=payload.nuevo_caso.categoria
+        )
+        db.add(db_caso)
+        await db.flush() 
+        
+        for est_inc in incidente.estudiantes:
+            nuevo_est_caso = EstudianteCaso(
+                id_estudiante=est_inc.id_estudiante,
+                id_caso=db_caso.id_caso,
+                rol=est_inc.rol
+            )
+            db.add(nuevo_est_caso)
+        
+        # Asignación de puntero unificado
+        incidente.id_caso = db_caso.id_caso
+
+    # Vía B: Elevación por Reincidencia (Acumulación)
+    elif payload.tipo_elevacion == "acumulacion":
+        if not payload.id_caso_acumulado:
+            raise BusinessLogicError("Debe especificar el id_caso_acumulado.")
+        
+        stmt_caso = select(Caso).where(Caso.id_caso == payload.id_caso_acumulado)
+        result_caso = await db.execute(stmt_caso)
+        caso_destino = result_caso.scalar_one_or_none()
+        
+        if not caso_destino:
+            raise EntityNotFoundError("Caso destino no encontrado.")
+        
+        if caso_destino.estado != EstadoCaso.abierto:
+            raise BusinessLogicError("No se puede anexar incidentes a un caso cerrado.")
+            
+        # Asignación de puntero unificado
+        incidente.id_caso = caso_destino.id_caso
+
+    # En ambos escenarios el estado cambia a aceptado
+    incidente.estado = EstadoIncidente.aceptado
+
+    await db.commit()
+    return incidente
+
+
+
+async def create_caso_completo(
+    db: AsyncSession,
+    id_coordinador: str,
+    caso_in: CasoCreate,
+    archivos: List[UploadFile],
+    minio_client
+) -> Caso:
+    
+    # Crear el Caso base 
+    nuevo_caso = Caso(
+        id_coordinador=id_coordinador,
+        estado=caso_in.estado.value if hasattr(caso_in.estado, 'value') else caso_in.estado,
+        fecha_inicio=caso_in.fecha_inicio,
+        desc=caso_in.desc,
+        gravedad=caso_in.gravedad.value if hasattr(caso_in.gravedad, 'value') else caso_in.gravedad,
+        categoria=caso_in.categoria.value if hasattr(caso_in.categoria, 'value') else caso_in.categoria
+    )
+    db.add(nuevo_caso)
+    await db.flush() # Obtener id_caso preliminar
+
+    # Crear el Incidente Originario 
+    # Al ser el primero que se inserta, la base de datos le asignará el ID más bajo de este caso (TODO)
+    # lo que lo convierte automáticamente en el "originario" temporalmente hablando.
+    incidente_originario = Incidente(
+        id_productor=id_coordinador, 
+        gravedad=caso_in.gravedad.value if hasattr(caso_in.gravedad, 'value') else caso_in.gravedad,
+        desc=caso_in.desc,
+        fecha=caso_in.fecha_inicio,
+        categoria=caso_in.categoria.value if hasattr(caso_in.categoria, 'value') else caso_in.categoria,
+        estado=EstadoIncidente.aceptado.value if hasattr(EstadoIncidente, 'aceptado') else "aceptado",
+        id_caso=nuevo_caso.id_caso # Relación N:1 estándar
+    )
+    db.add(incidente_originario)
+    await db.flush() # Obtener id_incidente preliminar
+
+    # Propagar Asociación de Estudiantes (Doble Inserción)
+    for est_data in caso_in.estudiantes:
+        rol_val = est_data.rol.value if hasattr(est_data.rol, 'value') else est_data.rol
+        
+        # Asociación a largo plazo (Caso)
+        nueva_asociacion_caso = EstudianteCaso(
+            id_estudiante=est_data.id_estudiante,
+            id_caso=nuevo_caso.id_caso,
+            rol=rol_val
+        )
+        db.add(nueva_asociacion_caso)
+
+        # Asociación del suceso específico (Incidente originario)
+        nueva_asociacion_incidente = EstudianteIncidente(
+            id_estudiante=est_data.id_estudiante,
+            id_incidente=incidente_originario.id_incidente,
+            rol=rol_val
+        )
+        db.add(nueva_asociacion_incidente)
+
+    # Procesar Archivos y Vincular al Incidente Originario
+    if archivos:
+        has_bytes = False
+        for f in archivos:
+            if len(await f.read()) > 0:
+                has_bytes = True
+            await f.seek(0)
+
+        if has_bytes:
+            for file in archivos:
+                contenido = await file.read()
+                size_bytes = len(contenido)
+                if size_bytes == 0:
+                    continue
+
+                # Generar object_key único
+                ahora = datetime.now()
+                ext = file.filename.split(".")[-1] if "." in file.filename else "bin"
+                object_key = f"{ahora.year}/{ahora.month:02d}/{uuid.uuid4()}.{ext}"
+                bucket_name = "evidencias"
+
+                # Subir a MinIO
+                upload_file_minio(
+                    client=minio_client,
+                    bucket=bucket_name,
+                    object_key=object_key,
+                    contenido=contenido,
+                    size_bytes=size_bytes,
+                    mime_type=file.content_type
+                )
+
+                # Registrar Documento vinculándolo estrictamente al Incidente base
+                nuevo_doc = Documento(
+                    bucket_name=bucket_name,
+                    object_key=object_key,
+                    nombre_original=file.filename,
+                    mime_type=file.content_type,
+                    size_bytes=size_bytes,
+                    descripcion=f"Evidencia originaria del Caso #{nuevo_caso.id_caso}",
+                    id_hito=None,
+                    id_incidente=incidente_originario.id_incidente, # <-- Vinculación Factual
+                    id_caso=None # <-- Nulo explícito para asegurar cumplimiento de XOR Check Constraint
+                )
+                db.add(nuevo_doc)
+
+    # Confirmar Operación Atómica
+    await db.commit()
+    return nuevo_caso
+
+
+async def update_incidente_estado(
+    db: AsyncSession, 
+    id_incidente: int, 
+    payload: IncidentUpdateEstado
+) -> Incidente:
+    
+    # Eager loading necesario para que FastAPI pueda serializar el IncidentResponse
+    stmt = select(Incidente).options(
+        selectinload(Incidente.productor),
+        selectinload(Incidente.documentos),
+        selectinload(Incidente.estudiantes)
+            .selectinload(EstudianteIncidente.estudiante)
+            .selectinload(Estudiante.curso)
+    ).where(Incidente.id_incidente == id_incidente)
+    
+    result = await db.execute(stmt)
+    incidente = result.scalar_one_or_none()
+    
+    if not incidente:
+        raise EntityNotFoundError("Incidente no encontrado.")
+        
+    # Regla de Negocio: Un incidente cristalizado dentro de un caso no puede rechazarse o dejarse pendiente 
+    if incidente.id_caso is not None and payload.estado != EstadoIncidente.aceptado:
+        raise BusinessLogicError("No se puede alterar el estado de un incidente que ya fue elevado y vinculado a un caso activo.")
+
+    # Mutación de estado
+    incidente.estado = payload.estado
+    
+    # Limpieza de seguridad para cumplir estrictamente con los CHECK constraints
+    if payload.estado == EstadoIncidente.rechazado:
+        if not payload.motivo_rechazo:
+            raise BusinessLogicError("Se requiere un motivo de rechazo explícito.")
+        incidente.motivo_rechazo = payload.motivo_rechazo
+    else:
+        incidente.motivo_rechazo = None
+
+    await db.commit()
+    return incidente

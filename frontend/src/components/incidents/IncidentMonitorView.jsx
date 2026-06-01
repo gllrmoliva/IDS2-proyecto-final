@@ -29,7 +29,7 @@ function getFechaLimite(periodo) {
 }
  
 export function IncidentMonitorView() {
-  const { incidents, loading, error, reload, handleAprobar, handleRechazar, handleRevertir } = useIncidents();
+  const { incidents, loading, error, reload, handleAprobar, handleRechazar, handleRevertir, handleElevar } = useIncidents();
   const [filters, setFilters]   = useState(INITIAL_FILTERS);
   const [selected, setSelected] = useState(null); 
   
@@ -152,6 +152,7 @@ export function IncidentMonitorView() {
           onAprobar={handleAprobar}
           onRechazar={handleRechazar}
           onRevertir={handleRevertir}
+          onElevar={handleElevar}
         />
       )}
     </div>
