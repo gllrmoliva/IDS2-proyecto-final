@@ -1,5 +1,6 @@
 import io
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from fastapi.responses import StreamingResponse
 from typing import Annotated
 import uuid
 from datetime import timedelta
@@ -152,17 +153,14 @@ async def obtener_url_documento(
 
     try:
         client = get_minio_client(usuario_tipo)
-        url = client.presigned_get_object(
-            bucket_name=doc.bucket_name,
-            object_name=doc.object_key,
-            expires=timedelta(hours=1),
-        )
+        response = client.get_object(doc.bucket_name, doc.object_key)
+        data = response.read()
+        response.close()
     except S3Error as e:
-        raise HTTPException(status_code=403, detail=f"Error al generar URL: {str(e)}")
+        raise HTTPException(status_code=403, detail=f"Error al obtener archivo: {str(e)}")
 
-    return {
-        "id_doc": doc.id_doc,
-        "nombre_original": doc.nombre_original,
-        "url": url,
-        "expira_en": "1 hora",
-    }
+    return StreamingResponse(
+        io.BytesIO(data),
+        media_type=doc.mime_type or "application/octet-stream",
+        headers={"Content-Disposition": f'inline; filename="{doc.nombre_original}"'},
+    )

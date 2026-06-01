@@ -102,6 +102,51 @@ function CasoBuscador({ involucrados = [], onSeleccionar }) {
   );
 }
 
+function EvidenciaLinks({ documentos }) {
+  const [abriendo, setAbriendo] = useState(null);
+
+  if (documentos.length === 0) {
+    return <DataRow label="Evidencia" value="Sin evidencia adjunta" />;
+  }
+
+  const handleAbrir = async (id_doc) => {
+    setAbriendo(id_doc);
+    try {
+      const token = sessionStorage.getItem("panoptes_token");
+      const r = await fetch(`/api/documents/documentos/${id_doc}/url`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!r.ok) throw new Error();
+      const blob = await r.blob();
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank');
+      setTimeout(() => URL.revokeObjectURL(url), 30000);
+    } catch {
+      alert("No se pudo cargar el archivo.");
+    } finally {
+      setAbriendo(null);
+    }
+  };
+
+  return (
+    <div className="flex gap-2 py-1">
+      <span className="text-xs font-semibold text-gray-500 w-28 flex-shrink-0">Evidencia</span>
+      <div className="flex flex-col gap-1">
+        {documentos.map(({ id_doc, nombre }) => (
+          <button
+            key={id_doc}
+            type="button"
+            onClick={() => handleAbrir(id_doc)}
+            className="text-sm text-blue-600 hover:underline text-left"
+          >
+            {abriendo === id_doc ? "Cargando..." : nombre}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function IncidentDetailModal({ incident, onClose, onAprobar, onRechazar, onRevertir, onElevar }) {
   if (!incident) return null;
 
@@ -232,7 +277,7 @@ export function IncidentDetailModal({ incident, onClose, onAprobar, onRechazar, 
               <Section title="ℹInformación del reporte">
                 <DataRow label="Fecha"         value={formatFecha(incident.fecha)} />
                 <DataRow label="Reportado por" value={incident.reportadoPor} />
-                <DataRow label="Evidencia"     value={incident.evidencia ?? "Sin evidencia adjunta"} />
+                <EvidenciaLinks documentos={incident.documentos ?? []} />
               </Section>
             </div>
 
