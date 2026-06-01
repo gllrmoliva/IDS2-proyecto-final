@@ -84,7 +84,7 @@ export default function FormularioIncidente() {
     setMensaje({ texto: '', tipo: '' });
 
     try {
-      if (USE_MOCK) { /* ... lógica de mock igual ... */ }
+      if (USE_MOCK) {  }
 
       const token = sessionStorage.getItem('panoptes_token') || activeToken; // Asegura tener el token
 

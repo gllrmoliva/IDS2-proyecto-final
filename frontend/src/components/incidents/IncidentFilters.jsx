@@ -1,5 +1,5 @@
 // IncidentFilters.jsx
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { FILTER_OPTIONS, INITIAL_FILTERS } from "../../data/mockIncidents";
 
 const GRAVEDADES_OPTS = [
@@ -31,6 +31,17 @@ const PERIODOS = [
 export function IncidentFilters({ filters, onChange }) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(filters);
+  const [cursos, setCursos] = useState(["todos"]);
+
+  useEffect(() => {
+    const token = sessionStorage.getItem("panoptes_token");
+    fetch("/api/students/courses/get_all", {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(r => r.ok ? r.json() : [])
+      .then(data => setCursos(["todos", ...data.map(c => c.nombre_curso)]))
+      .catch(() => {});
+  }, []);
 
   const handleDraft = (key) => (e) => {
     const update = { ...draft, [key]: e.target.value };
@@ -131,7 +142,7 @@ export function IncidentFilters({ filters, onChange }) {
                   {GRAVEDADES_FILTER.map(g => <option key={g.value} value={g.value}>{g.label}</option>)}
                 </select>
               </div>
-              <FilterSelect label="Curso"    value={draft.curso}    onChange={handleDraft("curso")}    options={FILTER_OPTIONS.cursos} />
+              <FilterSelect label="Curso"    value={draft.curso}    onChange={handleDraft("curso")}    options={cursos} />
             </div>
 
             {/* Fecha */}
