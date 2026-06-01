@@ -6,10 +6,10 @@ import { useState, useEffect } from "react";
 import { CASE_FILTER_OPTIONS, CASE_INITIAL_FILTERS } from "../../data/mockCases";
 
 const GRAVEDADES_FILTER = [
-  { value: "todas", label: "Todas" },
-  { value: "baja",  label: "Baja" },
-  { value: "media", label: "Media" },
-  { value: "alta",  label: "Alta" },
+  { value: "todas",     label: "Todas" },
+  { value: "leve",      label: "Baja" },
+  { value: "grave",     label: "Media" },
+  { value: "muy_grave", label: "Alta" },
 ];
 
 export function CaseFilters({ filters, onChange }) {

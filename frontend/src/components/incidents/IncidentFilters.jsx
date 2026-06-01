@@ -2,21 +2,11 @@
 import { useState, useEffect } from "react";
 import { FILTER_OPTIONS, INITIAL_FILTERS } from "../../data/mockIncidents";
 
-const GRAVEDADES_OPTS = [
-  { value: "todas", label: "Todas" },
-  { value: "baja",  label: "Baja" },
-  { value: "leve",  label: "Baja" },
-  { value: "media", label: "Media" },
-  { value: "grave", label: "Media" },
-  { value: "alta",  label: "Alta" },
-  { value: "muy_grave", label: "Alta" },
-];
-
 const GRAVEDADES_FILTER = [
-  { value: "todas", label: "Todas" },
-  { value: "baja",  label: "Baja" },
-  { value: "media", label: "Media" },
-  { value: "alta",  label: "Alta" },
+  { value: "todas",     label: "Todas" },
+  { value: "leve",      label: "Baja" },
+  { value: "grave",     label: "Media" },
+  { value: "muy_grave", label: "Alta" },
 ];
 
 const PERIODOS = [
