@@ -305,7 +305,12 @@ export default function FormularioIncidente() {
             <ul className="mt-2 flex flex-col gap-1">
               {archivos.map((archivo, i) => (
                 <li key={i} className="flex items-center justify-between px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700">
-                  <span className="truncate max-w-xs">{archivo.name}</span>
+                  <a
+                    href={URL.createObjectURL(archivo)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="truncate max-w-xs text-blue-600 hover:underline text-left"
+                  >{archivo.name}</a>
                   <button type="button" onClick={() => quitarArchivo(i)}
                     className="ml-2 text-red-400 hover:text-red-600 font-bold flex-shrink-0">✕</button>
                 </li>
