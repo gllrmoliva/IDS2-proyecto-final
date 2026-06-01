@@ -144,7 +144,7 @@ export default function FormularioIncidente() {
       }
 
       setMensaje({ texto: 'Incidente registrado exitosamente en Panoptes.', tipo: 'success' });
-      setFormData({ fecha: '', descripcion: '', gravedad: 'baja', categoria: 'violencia_fisica' });
+      setFormData({ fecha: '', descripcion: '', gravedad: 'leve', categoria: 'violencia_fisica' });
       setInvolucradoPrincipal(null);
       setOtrosInvolucrados([]);
       setArchivos([]);
