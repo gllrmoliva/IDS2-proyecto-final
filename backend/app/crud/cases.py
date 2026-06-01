@@ -11,9 +11,9 @@ from app.database.models import (
     EstadoCaso,
     EstudianteCaso,
     EstudianteIncidente,
-    Documento# Importación requerida para enrutar el ORM
+    Documento
 )
-from app.schemas.cases import ElevacionIncidenteRequest, IncidentCreate, EstudianteRolCreate, CasoCreate
+from app.schemas.cases import ElevacionIncidenteRequest, IncidentCreate, EstudianteRolCreate, CasoCreate, IncidentUpdateEstado
 from app.exceptions import EntityNotFoundError, BusinessLogicError
 import uuid
 from datetime import datetime
@@ -149,7 +149,6 @@ async def create_incidente_completo(
 
     # 4. Confirmar toda la operación en la base de datos
     await db.commit()
-    await db.refresh(nuevo_incidente)
     return nuevo_incidente
 
 
@@ -159,9 +158,12 @@ async def elevar_incidente(
     id_coordinador: str, 
     payload: ElevacionIncidenteRequest
 ) -> Incidente:
-    
     stmt_incidente = select(Incidente).options(
+        selectinload(Incidente.productor),
+        selectinload(Incidente.documentos),
         selectinload(Incidente.estudiantes)
+            .selectinload(EstudianteIncidente.estudiante)
+            .selectinload(Estudiante.curso)
     ).where(Incidente.id_incidente == id_incidente)
     
     result_inc = await db.execute(stmt_incidente)
@@ -222,8 +224,6 @@ async def elevar_incidente(
     incidente.estado = EstadoIncidente.aceptado
 
     await db.commit()
-    await db.refresh(incidente)
-    
     return incidente
 
 
@@ -263,7 +263,7 @@ async def create_caso_completo(
     db.add(incidente_originario)
     await db.flush() # Obtener id_incidente preliminar
 
-    # 3. Propagar Asociación de Estudiantes (Doble Inserción)
+    # Propagar Asociación de Estudiantes (Doble Inserción)
     for est_data in caso_in.estudiantes:
         rol_val = est_data.rol.value if hasattr(est_data.rol, 'value') else est_data.rol
         
@@ -330,5 +330,44 @@ async def create_caso_completo(
 
     # Confirmar Operación Atómica
     await db.commit()
-    await db.refresh(nuevo_caso)
     return nuevo_caso
+
+
+async def update_incidente_estado(
+    db: AsyncSession, 
+    id_incidente: int, 
+    payload: IncidentUpdateEstado
+) -> Incidente:
+    
+    # Eager loading necesario para que FastAPI pueda serializar el IncidentResponse
+    stmt = select(Incidente).options(
+        selectinload(Incidente.productor),
+        selectinload(Incidente.documentos),
+        selectinload(Incidente.estudiantes)
+            .selectinload(EstudianteIncidente.estudiante)
+            .selectinload(Estudiante.curso)
+    ).where(Incidente.id_incidente == id_incidente)
+    
+    result = await db.execute(stmt)
+    incidente = result.scalar_one_or_none()
+    
+    if not incidente:
+        raise EntityNotFoundError("Incidente no encontrado.")
+        
+    # Regla de Negocio: Un incidente cristalizado dentro de un caso no puede rechazarse o dejarse pendiente 
+    if incidente.id_caso is not None and payload.estado != EstadoIncidente.aceptado:
+        raise BusinessLogicError("No se puede alterar el estado de un incidente que ya fue elevado y vinculado a un caso activo.")
+
+    # Mutación de estado
+    incidente.estado = payload.estado
+    
+    # Limpieza de seguridad para cumplir estrictamente con los CHECK constraints
+    if payload.estado == EstadoIncidente.rechazado:
+        if not payload.motivo_rechazo:
+            raise BusinessLogicError("Se requiere un motivo de rechazo explícito.")
+        incidente.motivo_rechazo = payload.motivo_rechazo
+    else:
+        incidente.motivo_rechazo = None
+
+    await db.commit()
+    return incidente

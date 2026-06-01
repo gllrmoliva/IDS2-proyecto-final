@@ -177,7 +177,7 @@ ALTER TABLE "Estudiante" ADD FOREIGN KEY ("id_curso") REFERENCES "Curso" ("id_cu
 ALTER TABLE "Curso" ADD FOREIGN KEY ("id_pj") REFERENCES "ProfesorJefe" ("id_usuario") DEFERRABLE INITIALLY IMMEDIATE;
 ALTER TABLE "Caso" ADD FOREIGN KEY ("id_coordinador") REFERENCES "Coordinador" ("id_usuario") DEFERRABLE INITIALLY IMMEDIATE;
 ALTER TABLE "Hito" ADD FOREIGN KEY ("id_caso") REFERENCES "Caso" ("id_caso") ON DELETE CASCADE DEFERRABLE INITIALLY IMMEDIATE;
-ALTER TABLE "Incidente" ADD FOREIGN KEY ("id_productor") REFERENCES "Productor" ("id_usuario") DEFERRABLE INITIALLY IMMEDIATE;
+ALTER TABLE "Incidente" ADD FOREIGN KEY ("id_productor") REFERENCES "Usuario" ("id_usuario") DEFERRABLE INITIALLY IMMEDIATE; -- TODO: Esta restricción se puede cambiar por herencia de coordinador a Productor, sería mejor.
 ALTER TABLE "Incidente" ADD FOREIGN KEY ("id_caso") REFERENCES "Caso" ("id_caso") DEFERRABLE INITIALLY IMMEDIATE;
 ALTER TABLE "Documento" ADD FOREIGN KEY ("id_hito") REFERENCES "Hito" ("id_hito") DEFERRABLE INITIALLY IMMEDIATE;
 ALTER TABLE "Documento" ADD FOREIGN KEY ("id_incidente") REFERENCES "Incidente" ("id_incidente") DEFERRABLE INITIALLY IMMEDIATE;

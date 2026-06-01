@@ -9,14 +9,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.crud.cases import (get_incidents_for_user, get_cases_for_user,
-                            create_incidente_completo, create_caso_completo)
+                            create_incidente_completo, create_caso_completo, elevar_incidente, update_incidente_estado)
 
 from app.database.minio_client import get_minio_client
 
 from app.database.database import get_db
 from app.database.models import (
     Incidente, CategoriaConvivencia, Gravedad, EstadoIncidente,
-    EstudianteIncidente, Estudiante, Coordinador, EstadoCaso
+    EstudianteIncidente, Estudiante, Coordinador, EstadoCaso, Caso, EstudianteCaso, Hito
 )
 
 from app.schemas.cases import (
@@ -25,8 +25,8 @@ from app.schemas.cases import (
     IncidentResponse,
     ElevacionIncidenteRequest,
     EstudianteRolCreate,
-    IncidentCreate
-
+    IncidentCreate,
+    IncidentUpdateEstado
 )
 
 from app.exceptions import EntityNotFoundError, BusinessLogicError
@@ -59,6 +59,29 @@ async def read_incidents(
             status_code=500,
             detail=f"Error interno del servidor: {str(e)}"
         )
+
+@router.patch("/incidents/{id_incidente}/estado", response_model=IncidentResponse)
+async def actualizar_estado_incidente(
+    id_incidente: int,
+    payload: IncidentUpdateEstado,
+    current_user: Annotated[
+        dict, Depends(RoleChecker(allowed_roles=["coordinador"]))
+    ],
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Permite a un coordinador cambiar el estado de un incidente (aceptado, rechazado, pendiente).
+    """
+    
+    try:
+        incidente = await update_incidente_estado(db=db, id_incidente=id_incidente, payload=payload)
+        return incidente
+    except EntityNotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except BusinessLogicError as e:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Error interno: {str(e)}")       
 
 @router.post("/incidents/{id_incidente}/elevar", response_model=IncidentResponse)
 async def elevar_incidente_endpoint(
@@ -180,7 +203,7 @@ async def crear_nuevo_incidente(
     db: AsyncSession = Depends(get_db),
     # Quitamos minio_client de aquí
     current_user: Annotated[
-        dict, Depends(RoleChecker(allowed_roles=["productor", "profesor_jefe"]))
+        dict, Depends(RoleChecker(allowed_roles=["coordinador", "productor", "profesor_jefe"]))
     ] = None
 ):
     # Instanciamos el cliente MinIO manualmente usando el rol del usuario
@@ -244,9 +267,6 @@ async def read_cases(current_user: Annotated[
     return await get_cases_for_user(db, current_user) 
 
 
-# ---------------------------------------------------------
-# REEMPLAZA TU ENDPOINT @router.post("/cases/") POR ESTE:
-# ---------------------------------------------------------
 @router.post("/cases/", status_code=status.HTTP_201_CREATED, response_model=CasoResponse)
 async def create_case(
     caso_in: CasoCreate = Depends(form_to_case_schema),

@@ -152,3 +152,7 @@ class ElevacionIncidenteRequest(BaseModel):
     
     # Requerido si tipo_elevacion == "acumulacion"
     id_caso_acumulado: Optional[int] = None
+
+class IncidentUpdateEstado(BaseModel):
+    estado: EstadoIncidente
+    motivo_rechazo: Optional[str] = None

@@ -102,8 +102,7 @@ function CasoBuscador({ involucrados = [], onSeleccionar }) {
   );
 }
 
-
-export function IncidentDetailModal({ incident, onClose, onAprobar, onRechazar, onRevertir }) {
+export function IncidentDetailModal({ incident, onClose, onAprobar, onRechazar, onRevertir, onElevar }) {
   if (!incident) return null;
 
   const [paso, setPaso] = useState("detalle");
@@ -111,7 +110,15 @@ export function IncidentDetailModal({ incident, onClose, onAprobar, onRechazar, 
   const [razonRechazo, setRazonRechazo] = useState("");
   const [razonError, setRazonError] = useState(false);
   const [showConfirmDeshacer, setShowConfirmDeshacer] = useState(false);
+  
+  // Estados para elevación
   const [casoSeleccionado, setCasoSeleccionado] = useState(null);
+  const [elevarLoading, setElevarLoading] = useState(false);
+  
+  // Estados controlados para el formulario de nuevo caso
+  const [fechaInicio, setFechaInicio] = useState(incident.fecha || "");
+  const [descNueva, setDescNueva] = useState(incident.descripcion || "");
+  const [observaciones, setObservaciones] = useState("");
 
   const isPendiente = incident.estado === "pendiente";
 
@@ -142,6 +149,45 @@ export function IncidentDetailModal({ incident, onClose, onAprobar, onRechazar, 
   const handleCerrarSinGuardar = () => {
     onRevertir(incident.id);
     onClose();
+  };
+
+  // Funciones de submit
+  const submitNuevoCaso = async () => {
+    setElevarLoading(true);
+    const payload = {
+      tipo_elevacion: "nuevo_caso",
+      nuevo_caso: {
+        fecha_inicio: fechaInicio,
+        desc: observaciones.trim() ? `${descNueva}\n\nObservaciones: ${observaciones}` : descNueva,
+        gravedad: incident.gravedad,
+        categoria: incident.categoria || "otro",
+      }
+    };
+    try {
+      await onElevar(incident.id, payload);
+      onClose();
+    } catch (e) {
+      alert("Error al elevar: " + e.message);
+    } finally {
+      setElevarLoading(false);
+    }
+  };
+
+  const submitReincidencia = async () => {
+    if (!casoSeleccionado) return;
+    setElevarLoading(true);
+    const payload = {
+      tipo_elevacion: "acumulacion",
+      id_caso_acumulado: casoSeleccionado._id_caso
+    };
+    try {
+      await onElevar(incident.id, payload);
+      onClose();
+    } catch (e) {
+      alert("Error al anexar: " + e.message);
+    } finally {
+      setElevarLoading(false);
+    }
   };
 
   return (
@@ -387,47 +433,43 @@ export function IncidentDetailModal({ incident, onClose, onAprobar, onRechazar, 
                 Datos pre-cargados desde el incidente. Revisa y completa antes de guardar.
               </div>
               <FormGroup label="Alumno involucrado">
-                <input type="text" defaultValue={incident.alumno.nombre} readOnly
+                <input type="text" value={incident.alumno.nombre} readOnly
                   className="w-full px-3 py-2 rounded-xl border-2 border-gray-200 bg-gray-50 text-sm text-gray-600" />
               </FormGroup>
               <div className="grid grid-cols-2 gap-4">
                 <FormGroup label="Fecha de apertura">
-                  <input type="date" defaultValue={incident.fecha}
+                  <input type="date" value={fechaInicio} onChange={e => setFechaInicio(e.target.value)}
                     className="w-full px-3 py-2 rounded-xl border-2 border-gray-200 focus:border-blue-500 focus:outline-none text-sm" />
                 </FormGroup>
                 <FormGroup label="Curso">
-                  <input type="text" defaultValue={incident.alumno.curso} readOnly
+                  <input type="text" value={incident.alumno.curso} readOnly
                     className="w-full px-3 py-2 rounded-xl border-2 border-gray-200 bg-gray-50 text-sm text-gray-600" />
                 </FormGroup>
               </div>
-              <FormGroup label="Título del caso">
-                <input type="text" defaultValue={incident.tipo}
-                  className="w-full px-3 py-2 rounded-xl border-2 border-gray-200 focus:border-blue-500 focus:outline-none text-sm" />
-              </FormGroup>
+              
               <FormGroup label="Descripción inicial">
-                <textarea defaultValue={incident.descripcion} rows={3}
+                <textarea value={descNueva} onChange={e => setDescNueva(e.target.value)} rows={3}
                   className="w-full px-3 py-2 rounded-xl border-2 border-gray-200 focus:border-blue-500 focus:outline-none text-sm resize-none" />
               </FormGroup>
               <FormGroup label="Observaciones adicionales">
-                <textarea placeholder="Agrega contexto adicional si es necesario…" rows={2}
+                <textarea value={observaciones} onChange={e => setObservaciones(e.target.value)} placeholder="Agrega contexto adicional si es necesario…" rows={2}
                   className="w-full px-3 py-2 rounded-xl border-2 border-gray-200 focus:border-blue-500 focus:outline-none text-sm resize-none" />
               </FormGroup>
             </div>
             <div className="p-6 border-t border-gray-100 flex gap-3 justify-end">
-              <button onClick={handleCerrarSinGuardar}
+              <button onClick={handleCerrarSinGuardar} disabled={elevarLoading}
                 className="px-5 py-2.5 rounded-xl border-2 border-gray-300 text-gray-600 font-bold text-sm hover:bg-gray-50 transition-colors">
                 Cancelar
               </button>
-              <button onClick={() => { alert("Caso creado exitosamente.\n(Aquí se conectará al backend.)"); onClose(); }}
-                className="px-5 py-2.5 rounded-xl bg-blue-900 text-white font-bold text-sm hover:bg-blue-800 transition-colors">
-                Crear caso
+              <button onClick={submitNuevoCaso} disabled={elevarLoading}
+                className={`px-5 py-2.5 rounded-xl text-white font-bold text-sm transition-colors ${elevarLoading ? "bg-blue-400" : "bg-blue-900 hover:bg-blue-800"}`}>
+                {elevarLoading ? "Creando..." : "Crear caso"}
               </button>
             </div>
           </>
         )}
 
         {/* Paso 3b: Formulario agregar incidente a caso existente */}
-        
         {paso === "reincidencia" && (
           <>
             <div className="flex items-center justify-between p-6 border-b-2 border-yellow-500">
@@ -445,24 +487,23 @@ export function IncidentDetailModal({ incident, onClose, onAprobar, onRechazar, 
               <CasoBuscador involucrados={incident.involucrados ?? []} onSeleccionar={setCasoSeleccionado} />
             </div>
             <div className="p-6 border-t border-gray-100 flex gap-3 justify-end">
-              <button onClick={handleCerrarSinGuardar}
+              <button onClick={handleCerrarSinGuardar} disabled={elevarLoading}
                 className="px-5 py-2.5 rounded-xl border-2 border-gray-300 text-gray-600 font-bold text-sm hover:bg-gray-50 transition-colors">
                 Cancelar
               </button>
               <button
-                disabled={!casoSeleccionado}
-                onClick={() => { alert("Incidente agregado como reincidencia.\n(Aquí se conectará al backend.)"); onClose(); }}
+                disabled={!casoSeleccionado || elevarLoading}
+                onClick={submitReincidencia}
                 className={`px-5 py-2.5 rounded-xl text-white font-bold text-sm transition-colors ${
-                  casoSeleccionado
+                  casoSeleccionado && !elevarLoading
                     ? "bg-blue-900 hover:bg-blue-800"
                     : "bg-blue-300 cursor-not-allowed"
                 }`}>
-                Agregar como reincidencia
+                {elevarLoading ? "Agregando..." : "Agregar como reincidencia"}
               </button>
             </div>
           </>
         )}
-
 
       </div>
     </div>

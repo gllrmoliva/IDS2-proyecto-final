@@ -112,7 +112,10 @@ class EstudianteCaso(Base):
         ForeignKey("Caso.id_caso", ondelete="CASCADE", deferrable=True, initially="IMMEDIATE"), 
         primary_key=True
     )
-    rol: Mapped[Optional[RolInvolucrado]] = mapped_column()
+    rol: Mapped[Optional[RolInvolucrado]] = mapped_column(
+        Enum(RolInvolucrado, name="rol_involucrado", create_type=True),
+        nullable=True
+    )
 
     estudiante: Mapped["Estudiante"] = relationship(back_populates="casos")
     caso: Mapped["Caso"] = relationship(back_populates="estudiantes")
@@ -288,12 +291,24 @@ class Caso(Base):
         ForeignKey("Coordinador.id_usuario", deferrable=True, initially="IMMEDIATE"),
         nullable=False,
     )
-    estado: Mapped[EstadoCaso] = mapped_column(nullable=False)
+    estado: Mapped[EstadoCaso] = mapped_column(
+        Enum(EstadoCaso, name="estado_caso", create_type=True),
+        nullable=False,
+        default=EstadoCaso.abierto
+    )
+
+    categoria: Mapped[CategoriaConvivencia] = mapped_column(
+        Enum(CategoriaConvivencia, name="categoria_convivencia", create_type=True),
+        nullable=False
+    )
+
+    gravedad: Mapped[Gravedad] = mapped_column(
+        Enum(Gravedad, name="gravedad", create_type=True),
+        nullable=False
+    )
     fecha_inicio: Mapped[date] = mapped_column(Date, nullable=False)
     fecha_cierre: Mapped[Optional[date]] = mapped_column(Date)
     desc: Mapped[str] = mapped_column(Text, nullable=False)
-    gravedad: Mapped[Gravedad] = mapped_column(nullable=False)
-    categoria: Mapped[CategoriaConvivencia] = mapped_column(nullable=False)
 
     estudiantes: Mapped[List["EstudianteCaso"]] = relationship(
         back_populates="caso", cascade="all, delete-orphan"
@@ -348,7 +363,7 @@ class Incidente(Base):
                                               autoincrement=True)
     id_productor: Mapped[str] = mapped_column(
         String,
-        ForeignKey("Productor.id_usuario", deferrable=True, initially="IMMEDIATE"),
+        ForeignKey("Usuario.id_usuario", deferrable=True, initially="IMMEDIATE"), # TODO: Cambiar a Productor.id_usuario con coordinador heredando de productor.
         nullable=False,
     )
     gravedad: Mapped[Gravedad] = mapped_column(nullable=False)
@@ -394,7 +409,7 @@ class Incidente(Base):
         back_populates="incidente", cascade="all, delete-orphan"
     )
     documentos: Mapped[List["Documento"]] = relationship()
-    productor: Mapped["Productor"] = relationship("Productor")
+    productor: Mapped["Usuario"] = relationship("Usuario")
     
     caso: Mapped[Optional["Caso"]] = relationship("Caso", back_populates="incidentes")
 
