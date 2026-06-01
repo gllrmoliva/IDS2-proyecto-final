@@ -189,9 +189,9 @@ export default function FormularioIncidente() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">Fecha y Hora</label>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">Fecha</label>
             <input
-              type="datetime-local"
+              type="date"
               name="fecha"
               required
               value={formData.fecha}
