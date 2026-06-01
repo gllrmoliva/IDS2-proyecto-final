@@ -29,9 +29,9 @@ const GRAVEDAD_CASO_MAP = {
   alta: "bg-red-100 border border-red-200",     muy_grave: "bg-red-100 border border-red-200",
 };
 const GRAVEDAD_CASO_LABEL = {
-  baja: "Baja", leve: "Baja",
-  media: "Media", grave: "Media",
-  alta: "Alta", muy_grave: "Alta",
+  baja: "Leve", leve: "Leve",
+  media: "Grave", grave: "Grave",
+  alta: "Muy grave", muy_grave: "Muy grave",
 };
 
 export function GravedadCasoBadge({ gravedad }) {

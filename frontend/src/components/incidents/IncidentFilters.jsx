@@ -4,9 +4,9 @@ import { FILTER_OPTIONS, INITIAL_FILTERS } from "../../data/mockIncidents";
 
 const GRAVEDADES_FILTER = [
   { value: "todas",     label: "Todas" },
-  { value: "leve",      label: "Baja" },
-  { value: "grave",     label: "Media" },
-  { value: "muy_grave", label: "Alta" },
+  { value: "leve",      label: "Leve" },
+  { value: "grave",     label: "Grave" },
+  { value: "muy_grave", label: "Muy grave" },
 ];
 
 const PERIODOS = [

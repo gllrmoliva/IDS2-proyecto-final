@@ -7,9 +7,9 @@ import { CASE_FILTER_OPTIONS, CASE_INITIAL_FILTERS } from "../../data/mockCases"
 
 const GRAVEDADES_FILTER = [
   { value: "todas",     label: "Todas" },
-  { value: "leve",      label: "Baja" },
-  { value: "grave",     label: "Media" },
-  { value: "muy_grave", label: "Alta" },
+  { value: "leve",      label: "Leve" },
+  { value: "grave",     label: "Grave" },
+  { value: "muy_grave", label: "Muy grave" },
 ];
 
 export function CaseFilters({ filters, onChange }) {
