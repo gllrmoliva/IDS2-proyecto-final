@@ -27,4 +27,3 @@ entrypoint = "app.main:app"
 pythonpath = [
   "."
 ]
-
