@@ -12,8 +12,9 @@ from app.database.models import (
     EstudianteCaso,
     EstudianteIncidente,
     Documento
+    CasoUpdate
 )
-from app.schemas.cases import ElevacionIncidenteRequest, IncidentCreate, EstudianteRolCreate, CasoCreate, IncidentUpdateEstado
+from app.schemas.cases import CasoUpdate, ElevacionIncidenteRequest, IncidentCreate, EstudianteRolCreate, CasoCreate, IncidentUpdateEstado
 from app.exceptions import EntityNotFoundError, BusinessLogicError
 import uuid
 from datetime import datetime
@@ -371,3 +372,62 @@ async def update_incidente_estado(
 
     await db.commit()
     return incidente
+
+
+
+# Funcion de actualizacion de caso
+
+async def update_caso(
+    db: AsyncSession,
+    id_caso: int,
+    payload: CasoUpdate
+) -> Caso:
+    
+    # 1. Eager Loading para satisfacer a Pydantic (CasoResponse)
+    stmt = select(Caso).options(
+        selectinload(Caso.estudiantes)
+        .selectinload(EstudianteCaso.estudiante)
+        .selectinload(Estudiante.curso),
+        selectinload(Caso.hitos).options(
+            selectinload(Hito.documentos),
+            selectinload(Hito.estudiantes)
+        )
+    ).where(Caso.id_caso == id_caso)
+    
+    result = await db.execute(stmt)
+    caso = result.scalar_one_or_none()
+    
+    if not caso:
+        raise EntityNotFoundError("Caso no encontrado.")
+    
+    # 2. Proyección de estados para validación
+    estado_final = payload.estado if payload.estado is not None else caso.estado
+    fecha_cierre_final = payload.fecha_cierre if payload.fecha_cierre is not None else caso.fecha_cierre
+    
+    # 3. Validación de regla de negocio
+    if estado_final == EstadoCaso.cerrado and not fecha_cierre_final:
+        raise BusinessLogicError("Se requiere fecha_cierre para cerrar un caso.")
+    
+    # 4. Mutación selectiva
+    if payload.desc is not None:
+        caso.desc = payload.desc
+        
+    if payload.gravedad is not None:
+        caso.gravedad = payload.gravedad.value if hasattr(payload.gravedad, 'value') else payload.gravedad
+        
+    if payload.categoria is not None:
+        caso.categoria = payload.categoria.value if hasattr(payload.categoria, 'value') else payload.categoria
+
+    if payload.estado is not None:
+        caso.estado = payload.estado
+        # Si se reabre el caso, limpiar la fecha de cierre
+        if payload.estado == EstadoCaso.abierto:
+            caso.fecha_cierre = None
+            
+    # Solo aplicar fecha_cierre si realmente se va a cerrar/está cerrado
+    if payload.fecha_cierre is not None and estado_final == EstadoCaso.cerrado:
+        caso.fecha_cierre = payload.fecha_cierre
+    
+    # 5. Guardado (Como tienes expire_on_commit=False, el objeto sobrevive)
+    await db.commit()
+    return caso

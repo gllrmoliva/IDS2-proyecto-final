@@ -156,3 +156,10 @@ class ElevacionIncidenteRequest(BaseModel):
 class IncidentUpdateEstado(BaseModel):
     estado: EstadoIncidente
     motivo_rechazo: Optional[str] = None
+
+class CasoUpdate(BaseModel):
+    desc: Optional[str] = None
+    estado: Optional[EstadoCaso] = None
+    gravedad: Optional[Gravedad] = None
+    categoria: Optional[CategoriaConvivencia] = None
+    fecha_cierre: Optional[date] = None
