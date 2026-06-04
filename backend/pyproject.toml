@@ -27,7 +27,3 @@ entrypoint = "app.main:app"
 pythonpath = [
   "."
 ]
-
-[pytest]
-asyncio_mode = auto
-
