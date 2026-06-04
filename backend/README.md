@@ -26,7 +26,7 @@ MINIO_PRODUCTOR_SECRET_KEY=panoptes-prod-secret
 MINIO_PROFESOR_ACCESS_KEY=panoptes-prof-key
 MINIO_PROFESOR_SECRET_KEY=panoptes-prof-secret
 MINIO_PROFESOR_JEFE_ACCESS_KEY=panoptes-jefe-key
-MINIO_PROFESOR_JEFE_SECRET_KE=panoptes-jefe-secret
+MINIO_PROFESOR_JEFE_SECRET_KEY=panoptes-jefe-secret
 
 MINIO_ENDPOINT=minio:9000
 MINIO_ROOT_USER=Panoptes

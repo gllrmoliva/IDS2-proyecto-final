@@ -55,6 +55,7 @@ function mapIncident(inc) {
     reportadoPor:  inc.productor?.nombre?.replace(/\s*\(.*?\)\s*$/, "").trim() ?? "—",
     rolReportante: inc.productor?.tipo_usuario ?? "—",
     evidencia:     inc.documentos?.[0]?.nombre_original ?? null,
+    documentos:    (inc.documentos ?? []).map(d => ({ id_doc: d.id_doc, nombre: d.nombre_original })),
     alumno: {
       nombre: primerEstudiante?.nombre ?? "Sin estudiante",
       curso:  primerEstudiante?.nombre_curso ?? "—",
