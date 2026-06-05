@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.crud.cases import (get_incidents_for_user, get_cases_for_user,
-                            create_incidente_completo, create_caso_completo, elevar_incidente, update_incidente_estado)
+                            create_incidente_completo, create_caso_completo, elevar_incidente, update_incidente_estado, update_caso)
 
 from app.database.minio_client import get_minio_client
 

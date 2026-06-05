@@ -8,8 +8,7 @@ from app.schemas.cases import CasoUpdate
 from app.database.models import EstadoCaso, Caso
 from app.crud.cases import update_caso
 from app.api.cases import update_case
-from app.core.exceptions import EntityNotFoundError, BusinessLogicError # O donde estén tus errores
-
+from app.exceptions import EntityNotFoundError, BusinessLogicError
 # --- CONFIGURACIÓN DE PYTEST ASYNCIO ---
 pytestmark = pytest.mark.asyncio
 
