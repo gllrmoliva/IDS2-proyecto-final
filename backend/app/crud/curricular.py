@@ -20,3 +20,12 @@ async def get_courses(db: AsyncSession, user):
         result = await db.execute(stmt)
 
         return result.scalars().all()
+
+
+async def get_student_by_id(db: AsyncSession, user, id_estudiante):
+    if user.tipo_usuario in ["coordinador", "productor", "profesor_jefe"]:
+        stmt = select(Estudiante).where(Estudiante.id_estudiante == id_estudiante)
+
+        result = await db.execute(stmt)
+
+        return result.scalar_one_or_none()

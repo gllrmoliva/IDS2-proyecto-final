@@ -19,7 +19,7 @@ import uuid
 from datetime import datetime
 from fastapi import UploadFile, HTTPException
 from app.crud.documents import upload_file_minio
-from typing import List
+from typing import List, Optional
 
 
 async def get_incidents_for_user(db: AsyncSession, user):
@@ -52,7 +52,7 @@ async def get_incidents_for_user(db: AsyncSession, user):
     return result.scalars().unique().all()
 
 
-async def get_cases_for_user(db: AsyncSession, user):
+async def get_cases_for_user(db: AsyncSession, user, id_estudiante: Optional[str] = None):
     # Eager loading
     stmt = select(Caso).options(
         # Cargar estudiantes del Caso
@@ -66,6 +66,9 @@ async def get_cases_for_user(db: AsyncSession, user):
             selectinload(Hito.estudiantes)
         ),
     )
+
+    if id_estudiante:
+        stmt = stmt.where(Caso.estudiantes.any(EstudianteCaso.id_estudiante == id_estudiante))
 
     if user.tipo_usuario == "coordinador":
         pass
