@@ -59,10 +59,22 @@ INSERT INTO "Caso" ("id_caso", "id_coordinador", "estado", "fecha_inicio", "fech
 (2, '11111111-1', 'cerrado', '2026-04-01', '2026-04-15', 'Daño a propiedad del colegio (ventanal).', 'muy_grave', 'dano_infraestructura_bienes');
 
 -- Hitos
-INSERT INTO "Hito" ("id_hito", "id_caso", "tipo", "nivel_medida", "desc", "fecha") VALUES
-(1, 1, 'tramite', NULL, 'Entrevista inicial con apoderados de Juanito.', '2026-05-12'),
-(2, 1, 'tramite', NULL, 'Derivación a convivencia escolar.', '2026-05-15'),
-(3, 2, 'medida', 'disciplinaria_n2', 'Cierre del caso con carta de compromiso.', '2026-04-15');
+INSERT INTO "Hito" (
+  "id_hito", 
+  "id_caso", 
+  "tipo", 
+  "nivel_medida", 
+  "categoria_tramite", 
+  "subtipo_tramite", 
+  "desc", 
+  "fecha"
+) VALUES
+-- Hito 1: Trámite (Entrevista)
+(1, 1, 'tramite', NULL, 'comunicacion_citaciones', 'entrevista_apoderado', 'Entrevista inicial con apoderados de Juanito.', '2026-05-12'),
+-- Hito 2: Trámite (Derivación)
+(2, 1, 'tramite', NULL, 'derivaciones', 'derivacion_dupla_psicosocial', 'Derivación a convivencia escolar.', '2026-05-15'),
+-- Hito 3: Medida 
+(3, 2, 'medida', 'disciplinaria_n2', NULL, NULL, 'Cierre del caso con carta de compromiso.', '2026-04-15');
 
 -- Incidentes 
 INSERT INTO "Incidente" ("id_incidente", "id_productor", "gravedad", "categoria", "desc", "id_caso", "estado", "motivo_rechazo", "fecha") VALUES
