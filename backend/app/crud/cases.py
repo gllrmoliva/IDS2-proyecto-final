@@ -25,13 +25,16 @@ from app.schemas.cases import (
         EstudianteRolCreate,
         CasoCreate,
         IncidentUpdateEstado,
-        HitoCreate
+        HitoCreate,
+        CasoUpdate,
+        IncidentCreate
 )
-
 from app.exceptions import EntityNotFoundError, BusinessLogicError
-from app.crud.documents import (
-        upload_file_minio,
-)
+import uuid
+from datetime import datetime
+from fastapi import UploadFile, HTTPException
+from app.crud.documents import upload_file_minio
+from typing import List, Optional
 
 
 async def get_incidents_for_user(db: AsyncSession, user):
@@ -64,7 +67,7 @@ async def get_incidents_for_user(db: AsyncSession, user):
     return result.scalars().unique().all()
 
 
-async def get_cases_for_user(db: AsyncSession, user):
+async def get_cases_for_user(db: AsyncSession, user, id_estudiante: Optional[str] = None):
     # Eager loading
     stmt = select(Caso).options(
         # Cargar estudiantes del Caso
@@ -78,6 +81,9 @@ async def get_cases_for_user(db: AsyncSession, user):
             selectinload(Hito.estudiantes)
         ),
     )
+
+    if id_estudiante:
+        stmt = stmt.where(Caso.estudiantes.any(EstudianteCaso.id_estudiante == id_estudiante))
 
     if user.tipo_usuario == "coordinador":
         pass
@@ -391,6 +397,57 @@ async def update_incidente_estado(
     return incidente
 
 
+# Funcion de actualizacion de caso
+async def update_caso(
+    db: AsyncSession,
+    id_caso: int,
+    payload: CasoUpdate
+) -> Caso:
+    
+    # Eager Loading para satisfacer a Pydantic (gemini me dijo que lo agregara)
+    stmt = select(Caso).options(
+        selectinload(Caso.estudiantes)
+        .selectinload(EstudianteCaso.estudiante)
+        .selectinload(Estudiante.curso),
+        selectinload(Caso.hitos).options(
+            selectinload(Hito.documentos),
+            selectinload(Hito.estudiantes)
+        )
+    ).where(Caso.id_caso == id_caso)
+    
+    result = await db.execute(stmt)
+    caso = result.scalar_one_or_none()
+    
+    if not caso:
+        raise EntityNotFoundError("Caso no encontrado.")
+    
+    estado_final = payload.estado if payload.estado is not None else caso.estado
+    fecha_cierre_final = payload.fecha_cierre if payload.fecha_cierre is not None else caso.fecha_cierre
+    
+    if estado_final == EstadoCaso.cerrado and not fecha_cierre_final:
+        raise BusinessLogicError("Se requiere fecha_cierre para cerrar un caso.")
+    
+    if payload.desc is not None:
+        caso.desc = payload.desc
+        
+    if payload.gravedad is not None:
+        caso.gravedad = payload.gravedad.value if hasattr(payload.gravedad, 'value') else payload.gravedad
+        
+    if payload.categoria is not None:
+        caso.categoria = payload.categoria.value if hasattr(payload.categoria, 'value') else payload.categoria
+
+    if payload.estado is not None:
+        caso.estado = payload.estado
+        # Si se reabre el caso, limpiar la fecha de cierre
+        if payload.estado == EstadoCaso.abierto:
+            caso.fecha_cierre = None
+            
+    if payload.fecha_cierre is not None and estado_final == EstadoCaso.cerrado:
+        caso.fecha_cierre = payload.fecha_cierre
+    
+    await db.commit()
+    return caso
+  
 async def create_hito_completo(
     db: AsyncSession,
     id_caso: int,

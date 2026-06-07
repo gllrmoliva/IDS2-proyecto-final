@@ -8,7 +8,9 @@ from app.database.models import (
     CategoriaConvivencia,
     TipoHito,
     NivelMedida,
-    RolInvolucrado
+    RolInvolucrado,
+    CategoriaTramite,
+    SubtipoTramite
 )
 
 
@@ -48,9 +50,11 @@ class HitoResponse(BaseModel):
     id_caso: int
     tipo: TipoHito
     nivel_medida: Optional[NivelMedida] = None
+    categoria_tramite: Optional[CategoriaTramite] = None
+    subtipo_tramite: Optional[SubtipoTramite] = None
     desc: str
     fecha: date
-    # Estudiantes asociados al Hito (Targets de medidas)
+    # Estudiantes asociados al Hito (targets de medidas/trámites)
     estudiantes: List[EstudianteResponse] = []
     documentos: List[DocumentoResponse] = []
 
@@ -158,7 +162,15 @@ class IncidentUpdateEstado(BaseModel):
     estado: EstadoIncidente
     motivo_rechazo: Optional[str] = None
 
+      
+class CasoUpdate(BaseModel):
+    desc: Optional[str] = None
+    estado: Optional[EstadoCaso] = None
+    gravedad: Optional[Gravedad] = None
+    categoria: Optional[CategoriaConvivencia] = None
+    fecha_cierre: Optional[date] = None
 
+      
 class HitoCreate(BaseModel):
     tipo: TipoHito
     nivel_medida: Optional[NivelMedida] = None

@@ -18,6 +18,7 @@ from app.crud.cases import (
         create_caso_completo,
         elevar_incidente,
         update_incidente_estado,
+        update_caso,
         create_hito_completo
 )
 
@@ -37,6 +38,7 @@ from app.database.models import (
 from app.schemas.cases import (
     CasoCreate,
     CasoResponse,
+    CasoUpdate,
     IncidentResponse,
     ElevacionIncidenteRequest,
     IncidentCreate,
@@ -300,3 +302,25 @@ async def create_case(
         raise HTTPException(status_code=404, detail="Error al recuperar el caso creado.")
         
     return caso_cargado
+  
+@router.patch("/cases/{id_caso}", response_model=CasoResponse)
+async def update_case(
+    id_caso: int,
+    payload: CasoUpdate,  # Schema nuevo (ver abajo)
+    current_user: Annotated[
+        dict, Depends(RoleChecker(allowed_roles=["coordinador"]))
+    ],
+    db: AsyncSession = Depends(get_db)
+):
+    """Permite al Coordinador modificar un caso existente."""
+    try:
+        caso_actualizado = await update_caso(
+            db=db,
+            id_caso=id_caso,
+            payload=payload
+        )
+        return caso_actualizado
+    except EntityNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except BusinessLogicError as e:
+        raise HTTPException(status_code=409, detail=str(e))

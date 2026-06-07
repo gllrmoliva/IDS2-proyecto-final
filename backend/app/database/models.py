@@ -74,6 +74,36 @@ class CategoriaConvivencia(str, enum.Enum):
     valores_institucionales = "valores_institucionales"
     otro = "otro"
 
+class CategoriaTramite(str, enum.Enum):
+    comunicacion_citaciones = "comunicacion_citaciones"
+    derivaciones = "derivaciones"
+    documentacion = "documentacion"
+    coordinacion_interna = "coordinacion_interna"
+
+class SubtipoTramite(str, enum.Enum):
+    # Comunicación y citaciones
+    citacion_apoderado = "citacion_apoderado"
+    entrevista_estudiante = "entrevista_estudiante"
+    entrevista_apoderado = "entrevista_apoderado"
+    notificacion_formal = "notificacion_formal"
+    
+    # Derivaciones
+    derivacion_orientacion = "derivacion_orientacion"
+    derivacion_psicologo = "derivacion_psicologo"
+    derivacion_dupla_psicosocial = "derivacion_dupla_psicosocial"
+    derivacion_red_externa = "derivacion_red_externa"
+    
+    # Documentación
+    firma_compromiso = "firma_compromiso"
+    acta_reunion = "acta_reunion"
+    registro_libro_clases = "registro_libro_clases"
+    informe_seguimiento = "informe_seguimiento"
+    
+    # Coordinación interna
+    reunion_equipo_directivo = "reunion_equipo_directivo"
+    comunicacion_inspector_general = "comunicacion_inspector_general"
+    activacion_protocolo = "activacion_protocolo"
+
 
 ####################
 # RELACIONES SECUNDARIAS (Sólo sin payload extra)
@@ -340,21 +370,36 @@ class Hito(Base):
         ),
         nullable=False,
     )
-
     tipo: Mapped[TipoHito] = mapped_column(
-            Enum(TipoHito, name="tipo_hito", create_type=True),
-            nullable=False)
-
+        Enum(TipoHito, name="tipo_hito", create_type=True), nullable=False
+    )
+    
     nivel_medida: Mapped[Optional[NivelMedida]] = mapped_column(
-            Enum(NivelMedida, name="nivel_medida", create_type=True)
-            )
+        Enum(NivelMedida, name="nivel_medida", create_type=True)
+    )
+    categoria_tramite: Mapped[Optional[CategoriaTramite]] = mapped_column(
+        Enum(CategoriaTramite, name="categoria_tramite", create_type=True)
+    )
+    subtipo_tramite: Mapped[Optional[SubtipoTramite]] = mapped_column(
+        Enum(SubtipoTramite, name="subtipo_tramite", create_type=True)
+    )
+
     desc: Mapped[str] = mapped_column(Text, nullable=False)
     fecha: Mapped[date] = mapped_column(Date, nullable=False)
 
     __table_args__ = (
         CheckConstraint(
-            "(tipo = 'medida'::tipo_hito AND nivel_medida IS NOT NULL) OR (tipo = 'tramite'::tipo_hito AND nivel_medida IS NULL)",
-            name="chk_hito_medida_nivel",
+            "(tipo = 'medida'::tipo_hito AND nivel_medida IS NOT NULL AND categoria_tramite IS NULL AND subtipo_tramite IS NULL) OR "
+            "(tipo = 'tramite'::tipo_hito AND nivel_medida IS NULL AND categoria_tramite IS NOT NULL AND subtipo_tramite IS NOT NULL)",
+            name="chk_hito_tipo_exclusivo",
+        ),
+        CheckConstraint(
+            "(categoria_tramite = 'comunicacion_citaciones'::categoria_tramite AND subtipo_tramite IN ('citacion_apoderado', 'entrevista_estudiante', 'entrevista_apoderado', 'notificacion_formal')) OR "
+            "(categoria_tramite = 'derivaciones'::categoria_tramite AND subtipo_tramite IN ('derivacion_orientacion', 'derivacion_psicologo', 'derivacion_dupla_psicosocial', 'derivacion_red_externa')) OR "
+            "(categoria_tramite = 'documentacion'::categoria_tramite AND subtipo_tramite IN ('firma_compromiso', 'acta_reunion', 'registro_libro_clases', 'informe_seguimiento')) OR "
+            "(categoria_tramite = 'coordinacion_interna'::categoria_tramite AND subtipo_tramite IN ('reunion_equipo_directivo', 'comunicacion_inspector_general', 'activacion_protocolo')) OR "
+            "(categoria_tramite IS NULL AND subtipo_tramite IS NULL)",
+            name="chk_jerarquia_tramite",
         ),
     )
 
@@ -363,8 +408,6 @@ class Hito(Base):
         secondary=estudiante_hito, back_populates="hitos"
     )
     documentos: Mapped[List["Documento"]] = relationship()
-
-
 class Incidente(Base):
     __tablename__ = "Incidente"
 

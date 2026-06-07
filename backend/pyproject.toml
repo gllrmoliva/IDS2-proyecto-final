@@ -7,10 +7,12 @@ requires-python = ">=3.14"
 dependencies = [
     "asyncpg>=0.31.0",
     "fastapi[standard]==0.136.1",
+    "httpx>=0.28.1",
     "minio>=7.2.20",
     "psycopg[binary]>=3.3.4",
     "pwdlib[argon2]>=0.3.0",
     "pyjwt>=2.13.0",
+    "pytest-asyncio>=1.4.0",
     "sqlalchemy>=2.0.49",
 ]
 
@@ -18,6 +20,7 @@ dependencies = [
 dev = [
     "httpx>=0.28.1",
     "pytest>=9.0.3",
+    "pytest-asyncio>=1.4.0",
 ]
 
 [tool.fastapi]
@@ -27,4 +30,6 @@ entrypoint = "app.main:app"
 pythonpath = [
   "."
 ]
-
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
+asyncio_default_test_loop_scope = "session"
