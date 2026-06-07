@@ -3,7 +3,6 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from fastapi.responses import StreamingResponse
 from typing import Annotated
 import uuid
-from datetime import timedelta
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -38,7 +37,8 @@ async def subir_documento(
     El archivo va a 'evidencias' si es imagen/video, a 'documentos' si es formal.
     """
     # 1. Validar extensión
-    extension = archivo.filename.split(".")[-1].lower() if "." in archivo.filename else ""
+    filename = archivo.filename or ""
+    extension = filename.split(".")[-1].lower() if "." in filename else ""
     if extension not in settings.EXTENSIONES_PERMITIDAS:
         raise HTTPException(status_code=400, detail=f"Extensión no permitida. Permitidas: {settings.EXTENSIONES_PERMITIDAS}")
 

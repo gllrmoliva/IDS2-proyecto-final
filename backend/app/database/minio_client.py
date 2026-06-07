@@ -4,6 +4,7 @@ import logging
 
 logging.basicConfig(level=logging.DEBUG)
 
+
 def get_minio_client(usuario: str) -> Minio:
     
     #Retorna un cliente MinIO con las credenciales del usuario indicado.

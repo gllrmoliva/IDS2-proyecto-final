@@ -30,19 +30,23 @@ class EstadoCaso(str, enum.Enum):
     abierto = "abierto"
     cerrado = "cerrado"
 
+
 class Gravedad(str, enum.Enum):
     leve = "leve"
     grave = "grave"
     muy_grave = "muy_grave"
+
 
 class EstadoIncidente(str, enum.Enum):
     aceptado = "aceptado"
     pendiente = "pendiente"
     rechazado = "rechazado"
 
+
 class TipoHito(str, enum.Enum):
     tramite = "tramite"
     medida = "medida"
+
 
 class NivelMedida(str, enum.Enum):
     cautelar = "cautelar"
@@ -50,11 +54,13 @@ class NivelMedida(str, enum.Enum):
     disciplinaria_n2 = "disciplinaria_n2"
     excepcional_n3 = "excepcional_n3"
 
+
 class RolInvolucrado(str, enum.Enum):
     afectado_victima = "afectado_victima"
     autor_agresor = "autor_agresor"
     complice = "complice"
     testigo_espectador = "testigo_espectador"
+
 
 class CategoriaConvivencia(str, enum.Enum):
     violencia_fisica = "violencia_fisica"
@@ -167,7 +173,6 @@ class EstudianteIncidente(Base):
 
     estudiante: Mapped["Estudiante"] = relationship(back_populates="incidentes")
     incidente: Mapped["Incidente"] = relationship(back_populates="estudiantes")
-
 
 
 ####################
@@ -291,7 +296,6 @@ class Estudiante(Base):
         ),
     )
 
-
     curso: Mapped[Optional["Curso"]] = relationship(back_populates="estudiantes")
 
     @property
@@ -299,7 +303,6 @@ class Estudiante(Base):
         """Expone el nombre del curso de forma plana para Pydantic."""
         return self.curso.nombre_curso if self.curso else None
 
-    
     casos: Mapped[List["EstudianteCaso"]] = relationship(back_populates="estudiante", cascade="all, delete-orphan")
     incidentes: Mapped[List["EstudianteIncidente"]] = relationship(back_populates="estudiante", cascade="all, delete-orphan")
     
@@ -349,8 +352,8 @@ class Caso(Base):
     
     # Relación inversa explícita para la navegación de la reincidencia/acumulación (opcional pero útil)
     incidentes: Mapped[List["Incidente"]] = relationship(
-        "Incidente", 
-        foreign_keys="[Incidente.id_caso]", 
+        "Incidente",
+        foreign_keys="[Incidente.id_caso]",
         back_populates="caso"
     )
 

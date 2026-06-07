@@ -1,6 +1,11 @@
+import uuid
+from datetime import datetime, date
+from fastapi import UploadFile
+from typing import List
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_
 from sqlalchemy.orm import selectinload
+
 from app.database.models import (
     Incidente,
     Estudiante,
@@ -11,9 +16,19 @@ from app.database.models import (
     EstadoCaso,
     EstudianteCaso,
     EstudianteIncidente,
-    Documento
+    Documento,
+    TipoHito
 )
-from app.schemas.cases import CasoUpdate, ElevacionIncidenteRequest, IncidentCreate, EstudianteRolCreate, CasoCreate, IncidentUpdateEstado
+
+from app.schemas.cases import (
+        ElevacionIncidenteRequest,
+        EstudianteRolCreate,
+        CasoCreate,
+        IncidentUpdateEstado,
+        HitoCreate,
+        CasoUpdate,
+        IncidentCreate
+)
 from app.exceptions import EntityNotFoundError, BusinessLogicError
 import uuid
 from datetime import datetime
@@ -87,7 +102,7 @@ async def create_incidente_completo(
     desc: str,
     gravedad: str,
     categoria: str,
-    fecha: datetime.date,
+    fecha: date,
     estado: str,
     estudiantes_in: List[EstudianteRolCreate],
     archivos: List[UploadFile],
@@ -123,10 +138,12 @@ async def create_incidente_completo(
 
         # Generar object_key único
         ahora = datetime.now()
-        ext = file.filename.split(".")[-1] if "." in file.filename else "bin"
+        filename = file.filename or ""
+        ext = filename.split(".")[-1] if "." in filename else "bin"
         object_key = f"{ahora.year}/{ahora.month:02d}/{uuid.uuid4()}.{ext}"
         bucket_name = "evidencias"
 
+        mime = file.content_type or "application/octet-stream"
         # Subir a MinIO (Tu función síncrona provista)
         upload_file_minio(
             client=minio_client,
@@ -134,7 +151,7 @@ async def create_incidente_completo(
             object_key=object_key,
             contenido=contenido,
             size_bytes=size_bytes,
-            mime_type=file.content_type
+            mime_type=mime
         )
 
         # Registrar en la tabla Documento
@@ -156,9 +173,9 @@ async def create_incidente_completo(
 
 
 async def elevar_incidente(
-    db: AsyncSession, 
-    id_incidente: int, 
-    id_coordinador: str, 
+    db: AsyncSession,
+    id_incidente: int,
+    id_coordinador: str,
     payload: ElevacionIncidenteRequest
 ) -> Incidente:
     stmt_incidente = select(Incidente).options(
@@ -192,7 +209,7 @@ async def elevar_incidente(
             categoria=payload.nuevo_caso.categoria
         )
         db.add(db_caso)
-        await db.flush() 
+        await db.flush()
         
         for est_inc in incidente.estudiantes:
             nuevo_est_caso = EstudianteCaso(
@@ -230,7 +247,6 @@ async def elevar_incidente(
     return incidente
 
 
-
 async def create_caso_completo(
     db: AsyncSession,
     id_coordinador: str,
@@ -239,7 +255,7 @@ async def create_caso_completo(
     minio_client
 ) -> Caso:
     
-    # Crear el Caso base 
+    # Crear el Caso base
     nuevo_caso = Caso(
         id_coordinador=id_coordinador,
         estado=caso_in.estado.value if hasattr(caso_in.estado, 'value') else caso_in.estado,
@@ -251,7 +267,7 @@ async def create_caso_completo(
     db.add(nuevo_caso)
     await db.flush() # Obtener id_caso preliminar
 
-    # Crear el Incidente Originario 
+    # Crear el Incidente Originario
     # Al ser el primero que se inserta, la base de datos le asignará el ID más bajo de este caso (TODO)
     # lo que lo convierte automáticamente en el "originario" temporalmente hablando.
     incidente_originario = Incidente(
@@ -268,7 +284,8 @@ async def create_caso_completo(
 
     # Propagar Asociación de Estudiantes (Doble Inserción)
     for est_data in caso_in.estudiantes:
-        rol_val = est_data.rol.value if hasattr(est_data.rol, 'value') else est_data.rol
+        # rol_val = est_data.rol.value if hasattr(est_data.rol, 'value') else est_data.rol
+        rol_val = getattr(est_data.rol, 'value', est_data.rol)
         
         # Asociación a largo plazo (Caso)
         nueva_asociacion_caso = EstudianteCaso(
@@ -303,18 +320,22 @@ async def create_caso_completo(
 
                 # Generar object_key único
                 ahora = datetime.now()
-                ext = file.filename.split(".")[-1] if "." in file.filename else "bin"
+
+                filename = file.filename or ""
+                ext = filename.split(".")[-1] if "." in filename else "bin"
                 object_key = f"{ahora.year}/{ahora.month:02d}/{uuid.uuid4()}.{ext}"
                 bucket_name = "evidencias"
 
                 # Subir a MinIO
+                mime = file.content_type or "application/octet-stream"
+
                 upload_file_minio(
                     client=minio_client,
                     bucket=bucket_name,
                     object_key=object_key,
                     contenido=contenido,
                     size_bytes=size_bytes,
-                    mime_type=file.content_type
+                    mime_type=mime
                 )
 
                 # Registrar Documento vinculándolo estrictamente al Incidente base
@@ -337,8 +358,8 @@ async def create_caso_completo(
 
 
 async def update_incidente_estado(
-    db: AsyncSession, 
-    id_incidente: int, 
+    db: AsyncSession,
+    id_incidente: int,
     payload: IncidentUpdateEstado
 ) -> Incidente:
     
@@ -374,7 +395,6 @@ async def update_incidente_estado(
 
     await db.commit()
     return incidente
-
 
 
 # Funcion de actualizacion de caso
@@ -427,3 +447,108 @@ async def update_caso(
     
     await db.commit()
     return caso
+  
+async def create_hito_completo(
+    db: AsyncSession,
+    id_caso: int,
+    hito_in: HitoCreate,
+    archivos: List[UploadFile],
+    minio_client
+) -> Hito:
+    # verificar exitencia de caso
+    stmt_caso = select(Caso).where(Caso.id_caso == id_caso)
+    result_caso = await db.execute(stmt_caso)
+    if not result_caso.scalar_one_or_none():
+        raise EntityNotFoundError(f"El caso con ID {id_caso} no existe.")
+
+    # ver si tiene tipo (solo si es medida)
+    if hito_in.tipo == TipoHito.medida and not hito_in.nivel_medida:
+        raise BusinessLogicError("Los hitos de tipo 'medida' requieren especificar un 'nivel_medida'.")
+
+    if hito_in.tipo == TipoHito.tramite and hito_in.nivel_medida:
+        raise BusinessLogicError("Los hitos de tipo 'tramite' no pueden tener un 'nivel_medida'.")
+
+    # crea el hito en la base de datos
+    nuevo_hito = Hito(
+        id_caso=id_caso,
+        tipo=hito_in.tipo.value if hasattr(hito_in.tipo, 'value') else hito_in.tipo,
+        nivel_medida=hito_in.nivel_medida.value if hasattr(hito_in.nivel_medida, 'value') and hito_in.nivel_medida else hito_in.nivel_medida,
+        desc=hito_in.desc,
+        fecha=hito_in.fecha
+    )
+    db.add(nuevo_hito)
+
+    # vincular estudiantes al hito
+    if hito_in.estudiantes_ids:
+        stmt_estudiantes = select(Estudiante).where(Estudiante.id_estudiante.in_(hito_in.estudiantes_ids))
+        result_ests = await db.execute(stmt_estudiantes)
+        estudiantes_db = result_ests.scalars().all()
+        
+        if len(estudiantes_db) != len(hito_in.estudiantes_ids):
+            raise EntityNotFoundError("Uno o más IDs de estudiantes proporcionados no existen.")
+            
+        nuevo_hito.estudiantes = list(estudiantes_db)
+
+    await db.flush()
+
+    # procesar archivos y subir a MinIO
+    if archivos:
+        has_bytes = False
+        for f in archivos:
+            if len(await f.read()) > 0:
+                has_bytes = True
+            await f.seek(0)
+
+        if has_bytes:
+            for file in archivos:
+                contenido = await file.read()
+                size_bytes = len(contenido)
+                if size_bytes == 0:
+                    continue
+
+                # object_key único
+                ahora = datetime.now()
+                filename = file.filename or ""
+                ext = filename.split(".")[-1] if "." in filename else "bin"
+                object_key = f"{ahora.year}/{ahora.month:02d}/{uuid.uuid4()}.{ext}"
+                bucket_name = "documentos"
+
+                # subir a MinIO
+                mime = file.content_type or "application/octet-stream"
+                upload_file_minio(
+                    client=minio_client,
+                    bucket=bucket_name,
+                    object_key=object_key,
+                    contenido=contenido,
+                    size_bytes=size_bytes,
+                    mime_type=mime
+                )
+
+                # registrar documento en base de datos
+                nuevo_doc = Documento(
+                    bucket_name=bucket_name,
+                    object_key=object_key,
+                    nombre_original=file.filename,
+                    mime_type=file.content_type,
+                    size_bytes=size_bytes,
+                    descripcion=f"Documento anexo al Hito #{nuevo_hito.id_hito}",
+                    id_hito=nuevo_hito.id_hito,  # vincular al hito
+                    id_incidente=None,
+                    id_caso=None
+                )
+                db.add(nuevo_doc)
+
+    await db.commit()
+
+    stmt_reload = (
+        select(Hito)
+        .where(Hito.id_hito == nuevo_hito.id_hito)
+        .options(
+            selectinload(Hito.estudiantes),
+        )
+    )
+
+    result_reload = await db.execute(stmt_reload)
+
+    hito_completo = result_reload.scalar_one()
+    return hito_completo
