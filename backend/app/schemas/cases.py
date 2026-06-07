@@ -163,3 +163,7 @@ class CasoUpdate(BaseModel):
     gravedad: Optional[Gravedad] = None
     categoria: Optional[CategoriaConvivencia] = None
     fecha_cierre: Optional[date] = None
+    hitos_a_eliminar: Optional[List[int]] = Field(default_factory=list)  # IDs de hitos
+    incidentes_a_eliminar: Optional[List[int]] = Field(default_factory=list)  # IDs de incidentes
+    
+    model_config = {"from_attributes": True}
