@@ -18,11 +18,11 @@ class Settings(BaseSettings):
     MINIO_ROOT_USER: str
     MINIO_ROOT_PASSWORD: str
 
-    EXTENSIONES_PERMITIDAS: List[str] = ["jpg", "jpeg", "png", "gif", "mp4", "mov", "pdf", "docx", "xlsx"]
+    EXTENSIONES_PERMITIDAS: List[str] = ["jpg", "jpeg", "png", "gif",
+                                         "mp4", "mov",
+                                         "pdf", "docx", "xlsx"]
     TAMANO_MAXIMO_MB: int = 100
 
-    # 2. Usamos un computed_field para que se calcule SIEMPRE en base al valor real de MB
-    # (incluso si se sobreescribe desde el archivo .env)
     @computed_field
     @property
     def TAMANO_MAXIMO_BYTES(self) -> int:

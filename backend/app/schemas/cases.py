@@ -153,6 +153,25 @@ class ElevacionIncidenteRequest(BaseModel):
     # Requerido si tipo_elevacion == "acumulacion"
     id_caso_acumulado: Optional[int] = None
 
+
 class IncidentUpdateEstado(BaseModel):
     estado: EstadoIncidente
     motivo_rechazo: Optional[str] = None
+
+
+class HitoCreate(BaseModel):
+    tipo: TipoHito
+    nivel_medida: Optional[NivelMedida] = None
+    desc: str
+    fecha: date = Field(default_factory=date.today)
+    estudiantes_ids: List[str] = Field(default_factory=list, description="Lista de IDs de estudiantes vinculados a este hito")
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class HitoResponse(BaseModel):
+    id_hito: int
+    tipo: TipoHito
+    desc: str
+    fecha: date
+    model_config = ConfigDict(from_attributes=True)

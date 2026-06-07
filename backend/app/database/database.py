@@ -1,4 +1,3 @@
-import os
 from app.core.config import settings
 from typing import AsyncGenerator
 
