@@ -448,6 +448,7 @@ async def update_caso(
     await db.commit()
     return caso
   
+
 async def create_hito_completo(
     db: AsyncSession,
     id_caso: int,
@@ -455,6 +456,7 @@ async def create_hito_completo(
     archivos: List[UploadFile],
     minio_client
 ) -> Hito:
+
     # verificar exitencia de caso
     stmt_caso = select(Caso).where(Caso.id_caso == id_caso)
     result_caso = await db.execute(stmt_caso)
@@ -474,7 +476,9 @@ async def create_hito_completo(
         tipo=hito_in.tipo.value if hasattr(hito_in.tipo, 'value') else hito_in.tipo,
         nivel_medida=hito_in.nivel_medida.value if hasattr(hito_in.nivel_medida, 'value') and hito_in.nivel_medida else hito_in.nivel_medida,
         desc=hito_in.desc,
-        fecha=hito_in.fecha
+        fecha=hito_in.fecha,
+        categoria_tramite=hito_in.categoria_tramite,
+        subtipo_tramite=hito_in.subtipo_tramite
     )
     db.add(nuevo_hito)
 
