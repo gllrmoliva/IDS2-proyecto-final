@@ -404,7 +404,7 @@ async def update_caso(
     payload: CasoUpdate
 ) -> Caso:
     
-    # Eager Loading para satisfacer a Pydantic (gemini me dijo que lo agregara)
+   # Eager Loading para satisfacer a Pydantic (gemini me dijo que lo agregara)
     stmt = select(Caso).options(
         selectinload(Caso.estudiantes)
         .selectinload(EstudianteCaso.estudiante)
@@ -421,29 +421,60 @@ async def update_caso(
     if not caso:
         raise EntityNotFoundError("Caso no encontrado.")
     
+    # Calcular estado final para validación
     estado_final = payload.estado if payload.estado is not None else caso.estado
-    fecha_cierre_final = payload.fecha_cierre if payload.fecha_cierre is not None else caso.fecha_cierre
     
-    if estado_final == EstadoCaso.cerrado and not fecha_cierre_final:
-        raise BusinessLogicError("Se requiere fecha_cierre para cerrar un caso.")
+    # Validar cierre de caso
+    if estado_final == EstadoCaso.cerrado:
+        fecha_cierre_final = payload.fecha_cierre if payload.fecha_cierre is not None else caso.fecha_cierre
+        if not fecha_cierre_final:
+            raise BusinessLogicError("Se requiere fecha_cierre para cerrar un caso.")
     
+    # Eliminar hitos
+    if payload.hitos_a_eliminar:
+        for id_hito in payload.hitos_a_eliminar:
+            stmt_hito = select(Hito).where(
+                (Hito.id_hito == id_hito) & (Hito.id_caso == id_caso)
+            )
+            result_hito = await db.execute(stmt_hito)
+            hito = result_hito.scalar_one_or_none()
+            
+            if hito:
+                db.delete(hito)  # Sin await
+            else:
+                raise EntityNotFoundError(f"Hito {id_hito} no encontrado en este caso.")
+    
+    # Desvincular incidentes (no lo elimina, solo lo libera del caso y lo deja pendiente)
+    if payload.incidentes_a_eliminar:
+        for id_incidente in payload.incidentes_a_eliminar:
+            stmt_inc = select(Incidente).where(
+                (Incidente.id_incidente == id_incidente) & (Incidente.id_caso == id_caso)
+            )
+            result_inc = await db.execute(stmt_inc)
+            incidente = result_inc.scalar_one_or_none()
+            
+            if incidente:
+                incidente.id_caso = None
+                incidente.estado = EstadoIncidente.pendiente
+            else:
+                raise EntityNotFoundError(f"Incidente {id_incidente} no encontrado en este caso.")
+    
+    # Actualizar campos del caso
     if payload.desc is not None:
         caso.desc = payload.desc
-        
+    
     if payload.gravedad is not None:
-        caso.gravedad = payload.gravedad.value if hasattr(payload.gravedad, 'value') else payload.gravedad
-        
+        caso.gravedad = payload.gravedad
+    
     if payload.categoria is not None:
-        caso.categoria = payload.categoria.value if hasattr(payload.categoria, 'value') else payload.categoria
-
+        caso.categoria = payload.categoria
+    
     if payload.estado is not None:
         caso.estado = payload.estado
-        # Si se reabre el caso, limpiar la fecha de cierre
         if payload.estado == EstadoCaso.abierto:
             caso.fecha_cierre = None
-            
-    if payload.fecha_cierre is not None and estado_final == EstadoCaso.cerrado:
-        caso.fecha_cierre = payload.fecha_cierre
+        elif payload.estado == EstadoCaso.cerrado:
+            caso.fecha_cierre = payload.fecha_cierre
     
     await db.commit()
     return caso
