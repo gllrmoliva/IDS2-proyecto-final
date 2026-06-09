@@ -5,7 +5,9 @@ import { IncidentsPage } from "./pages/IncidentsPage";
 import { ReportIncidentPage } from "./pages/ReportIncidentPage";
 import { CasesPage } from "./pages/CasesPage";
 import { CreateCasePage } from "./pages/CreateCasePage";
-import LoginPage from "./pages/LoginPage"; 
+import LoginPage from "./pages/LoginPage";
+import { CaseDetailPage } from "./pages/CaseDetailPage";
+import { CreateHitoPage } from "./pages/CreateHitoPage"; 
 
 // Auth Guard Component
 const ProtectedRoute = () => {
@@ -34,7 +36,9 @@ function App() {
             <Route path="/incidents" element={<IncidentsPage />} />
             <Route path="/report" element={<ReportIncidentPage />} />
             <Route path="/cases" element={<CasesPage />} />
-            <Route path="/cases/new" element={<CreateCasePage />} />
+            <Route path="/cases/new"            element={<CreateCasePage />} />
+            <Route path="/cases/:id"              element={<CaseDetailPage />} />
+            <Route path="/cases/:id/nuevo-hito"   element={<CreateHitoPage />} />
           </Route>
         </Route>
       </Routes>

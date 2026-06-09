@@ -1,9 +1,10 @@
 // CaseMonitorView.jsx
-// Vista de monitoreo de casos para el coordinador.
+// Vista de monitoreo de casos para el coordinador
 
 import { useState, useMemo } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useCases } from "../../hooks/useCases";
+import { useIncidents } from "../../hooks/useIncidents";
 import { CASE_INITIAL_FILTERS } from "../../data/mockCases";
 import { formatFecha } from "../../utils/dateUtils";
 import { EstadoCasoBadge, GravedadCasoBadge } from "./CaseBadges";
@@ -12,9 +13,13 @@ import { StatCard } from "../shared/StatCards";
 import { LoadingState, ErrorState } from "../shared/LodingAndError";
 
 export function CaseMonitorView() {
+  const navigate = useNavigate();
   const { cases, loading, error, reload } = useCases();
+  const { incidents } = useIncidents();
   const [filters, setFilters] = useState(CASE_INITIAL_FILTERS);
 
+
+  // Filtros, los abiertos van primero
   const filtered = useMemo(() => {
     return cases.filter(c => {
       const q = filters.search.toLowerCase();
@@ -32,6 +37,7 @@ export function CaseMonitorView() {
     });
   }, [cases, filters]);
 
+  // métricas para las stats de resumen
   const stats = useMemo(() => ({
     total:   cases.length,
     abierto: cases.filter(c => c.estado === "abierto").length,
@@ -44,6 +50,7 @@ export function CaseMonitorView() {
   return (
     <div className="min-h-screen bg-slate-100 p-6 flex flex-col gap-6">
 
+      {/* Encabezado */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-blue-900 font-serif">Monitoreo de Casos</h1>
@@ -61,12 +68,13 @@ export function CaseMonitorView() {
         </div>
       </div>
 
+      {/* Stats */}
       <div className="grid grid-cols-3 gap-4">
         <StatCard label="Total"      value={stats.total}     color="text-blue-700" bg="bg-blue-50" border="border-blue-200" />
         <StatCard label="Abiertos"   value={stats.abierto}   color="text-blue-700" bg="bg-blue-50" border="border-blue-200" />
         <StatCard label="Cerrados"   value={stats.cerrado}   color="text-blue-700" bg="bg-blue-50" border="border-blue-200" />
       </div>
-
+      {/* Barra de búsqueda y filtros */}
       <div className="flex flex-col gap-3">
         <div className="flex gap-3 items-center">
           <input type="text" placeholder="Buscar por ID, descripción o estudiante…"
@@ -81,6 +89,7 @@ export function CaseMonitorView() {
         </p>
       </div>
 
+      {/* Tabla de casos */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5">
         {filtered.length === 0 ? (
           <div className="text-center py-16 text-gray-400">
@@ -98,14 +107,18 @@ export function CaseMonitorView() {
                   <th className="px-4 py-3 text-left">Gravedad</th>
                   <th className="px-4 py-3 text-left">Estado</th>
                   <th className="px-4 py-3 text-left">Hitos</th>
+                  <th className="px-4 py-3 text-left">Incidentes</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-100">
                 {filtered.map(c => (
-                  <tr key={c.id} className="transition-colors">
+                  // clickear el caso te lleva al detalle del mismo
+                  <tr key={c.id} onClick={() => navigate(`/cases/${c.id}`)} className="hover:bg-blue-50 cursor-pointer transition-colors">
                     <td className="px-4 py-3 font-bold text-blue-700">{c.id}</td>
                     <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{formatFecha(c.fechaInicio)}</td>
                     <td className="px-4 py-3">
+
+                      {/*Muestra hasta 2 estudiantes, primero va siempre el autor/agresor */}
                       {[...c.estudiantes].sort((a,b) =>
                         a.rol === "autor_agresor" ? -1 : b.rol === "autor_agresor" ? 1 : 0
                       ).slice(0,2).map((e,i) => (
@@ -116,9 +129,11 @@ export function CaseMonitorView() {
                     <td className="px-4 py-3 text-gray-700 max-w-xs">
                       <span className="line-clamp-2 text-sm">{c.descripcion}</span>
                     </td>
-                    <td className="px-4 py-3"><GravedadCasoBadge gravedad={c.gravedad} /></td>
+                    {/* muestra gravedad,estado,hitos y incidentes */}
+                    <td className="px-4 py-3"><GravedadCasoBadge gravedad={c.gravedad} /></td> 
                     <td className="px-4 py-3"><EstadoCasoBadge estado={c.estado} /></td>
                     <td className="px-4 py-3 text-xs">{c.hitos.length} hito{c.hitos.length !== 1 ? "s" : ""}</td>
+                    <td className="px-4 py-3 text-xs">{incidents.filter(i => i._id_caso === c._id_caso || i._id_caso_acumulado === c._id_caso).length}</td>
                   </tr>
                 ))}
               </tbody>
