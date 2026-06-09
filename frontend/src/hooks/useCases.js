@@ -1,36 +1,8 @@
-// useCases.js
-// Hook que abstrae el origen de datos de casos.
-// Para activar el backend: cambiar USE_MOCK a false.
-
+// src/hooks/useCases.js
 import { useState, useEffect, useCallback } from "react";
 import { MOCK_CASES } from "../data/mockCases";
 
 const USE_MOCK = false;
-
-// --- HOTFIX: Auto-login para desarrollo ---
-const fetchDevToken = async () => {
-  const res = await fetch("/api/auth/token", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    // FastAPI requiere Form Data para el login, no JSON
-    body: new URLSearchParams({
-      username: "ana.silva@colegio.cl",
-      password: "testpassword",
-      //username: "carlos.insp@colegio.cl",
-      //password: "testpassword1",
-      //username: "maria.prof@colegio.cl",
-      //password: "testpassword3",
-    }),
-  });
-  if (!res.ok) throw new Error("Fallo el auto-login de desarrollo");
-  const data = await res.json();
-  return data.access_token;
-};
-
-
-// ------------------------------------------
 
 function mapCase(c) {
   return {
@@ -42,10 +14,9 @@ function mapCase(c) {
     descripcion: c.desc,
     gravedad:    c.gravedad,
     categoria:   c.categoria,
-    // Desempaquetar el Association Object usando la nueva llave
     estudiantes: (c.estudiantes ?? []).map(e => ({
-      ...e.estudiante, // Extrae id_estudiante, nombre, nombre_curso
-      rol: e.rol ?? "Sin rol" // Conserva el rol investigativo
+      ...e.estudiante, 
+      rol: e.rol ?? "Sin rol" 
     })),
     hitos:       [...(c.hitos ?? [])].sort((a, b) => new Date(a.fecha) - new Date(b.fecha)),
   };
@@ -55,10 +26,17 @@ const fetchFromAPI = async (token) => {
   const res = await fetch("/api/operate/cases/read", {
     headers: {
       "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      // Inyectamos el token directamente en la cabecera
+      "Authorization": `Bearer ${token}` 
     },
   });
+
+  if (res.status === 401 || res.status === 403) {
+    throw new Error("No autorizado. Su sesión podría haber expirado.");
+  }
+  
   if (!res.ok) throw new Error(`Error ${res.status}: no se pudo cargar los casos`);
+  
   const data = await res.json();
   return data.map(mapCase);
 };
@@ -66,36 +44,32 @@ const fetchFromAPI = async (token) => {
 const fetchMock = () =>
   new Promise((resolve) => setTimeout(() => resolve(MOCK_CASES.map(mapCase)), 600));
 
-export function useCases(initialToken = null) {
+export function useCases() {
   const [cases, setCases]     = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState(null);
-  
-  // Guardamos el token en el estado para poder reusarlo en los PATCH
-  const [activeToken, setActiveToken] = useState(initialToken);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      let currentToken = activeToken;
+      // Leemos el token de forma síncrona desde el almacenamiento local
+      const token = localStorage.getItem("access_token");
       
-      // Ejecutar hotfix si no hay token
-      if (!USE_MOCK && !currentToken) {
-        currentToken = await fetchDevToken();
-        setActiveToken(currentToken);
-        sessionStorage.setItem("panoptes_token", currentToken);
+      // Medida de seguridad extra por si el Guard falla
+      if (!USE_MOCK && !token) {
+        throw new Error("No se encontró un token de sesión.");
       }
 
-      const data = USE_MOCK ? await fetchMock() : await fetchFromAPI(currentToken);
+      const data = USE_MOCK ? await fetchMock() : await fetchFromAPI(token);
       setCases(data);
     } catch (e) {
-      setError("No se pudo cargar los casos. Intenta nuevamente.");
+      setError(e.message || "No se pudo cargar los casos. Intenta nuevamente.");
       console.error(e);
     } finally {
       setLoading(false);
     }
-  }, [activeToken]);
+  }, []);
 
   useEffect(() => { load(); }, [load]);
 
@@ -104,24 +78,31 @@ export function useCases(initialToken = null) {
   }, []);
 
   const handleCambiarEstado = useCallback(async (id, nuevoEstado) => {
+    // 1. Optimistic UI Update (Cambiamos la vista antes de confirmar en el backend)
     updateLocal(id, { estado: nuevoEstado });
+    
     if (!USE_MOCK) {
       const c = cases.find(x => x.id === id);
+      const token = localStorage.getItem("access_token");
+      
       try {
-        await fetch(`/api/operate/cases/${c?._id_caso}`, {
+        const res = await fetch(`/api/operate/cases/${c?._id_caso}`, {
           method: "PATCH",
           headers: {
             "Content-Type": "application/json",
-            ...(activeToken ? { Authorization: `Bearer ${activeToken}` } : {}),
+            "Authorization": `Bearer ${token}`,
           },
           body: JSON.stringify({ estado: nuevoEstado }),
         });
+        
+        if (!res.ok) throw new Error("Error en la respuesta del servidor");
       } catch (e) { 
         console.error("Error al cambiar estado:", e); 
-        // Opcional: Revertir el estado local si falla la red
+        // Si el servidor falla, se debería revertir el Optimistic Update llamando a:
+        // updateLocal(id, { estado: c.estado });
       }
     }
-  }, [cases, updateLocal, activeToken]);
+  }, [cases, updateLocal]);
 
   return { cases, loading, error, reload: load, handleCambiarEstado };
 }

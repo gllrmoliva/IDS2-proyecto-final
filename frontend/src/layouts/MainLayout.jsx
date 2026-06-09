@@ -1,26 +1,38 @@
-// MainLayout.jsx
-// Estructura visual compartida por todas las vistas del coordinador.
-// Incluye una barra de navegación superior con acceso a incidentes y casos.
-
-import { Outlet, NavLink } from "react-router-dom";
+// src/layouts/MainLayout.jsx
+import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 
 export function MainLayout() {
-  // Estado para manejar el identificador visual del sprint
   const [identidad, setIdentidad] = useState("Cargando usuario...");
+  const navigate = useNavigate();
 
+  // 1. Decodificar el token para mostrar el usuario
   useEffect(() => {
     try {
-      const token = sessionStorage.getItem("panoptes_token");
+      // Usamos localStorage y la llave correcta "access_token"
+      const token = localStorage.getItem("access_token");
       if (token) {
+        // El JWT tiene 3 partes separadas por puntos. El payload es la segunda [1].
         const payload = JSON.parse(atob(token.split(".")[1]));
-        // Muestra el email (sub) o podrías concatenar el rol: `${payload.sub} (${payload.tipo_usuario})`
+        
+        // Dependiendo de cómo armaste tu payload en FastAPI, 
+        // asumiremos que el correo está en 'sub'.
         setIdentidad(payload.sub);
       }
     } catch (e) {
       console.warn("No se pudo decodificar el token para el layout", e);
+      setIdentidad("Usuario Desconocido");
     }
   }, []);
+
+  // 2. Función de Logout
+  const handleLogout = () => {
+    // Borrar el token del navegador
+    localStorage.removeItem("access_token");
+    
+    // Redirigir inmediatamente al login
+    navigate("/login", { replace: true });
+  };
 
   return (
     <div className="min-h-screen bg-slate-100">
@@ -83,7 +95,7 @@ export function MainLayout() {
           </span>
 
           <button
-            onClick={() => alert("Cerrar sesión no está implementado aún.")}
+            onClick={handleLogout}
             style={{
               color: "rgba(255,255,255,0.7)",
               fontWeight: "500",
