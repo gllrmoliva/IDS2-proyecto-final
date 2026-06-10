@@ -104,5 +104,40 @@ export function useCases() {
     }
   }, [cases, updateLocal]);
 
-  return { cases, loading, error, reload: load, handleCambiarEstado };
+  const handleEditarCaso = useCallback(async (id, editForm) => {
+    const c = cases.find(x => x.id === id);
+    if (!c) return;
+
+    const token = localStorage.getItem("access_token");
+    const body = {
+      desc:         editForm.descripcion   || undefined,
+      estado:       editForm.estado        || undefined,
+      gravedad:     editForm.gravedad      || undefined,
+      fecha_cierre: editForm.fecha_cierre  || null,
+    };
+
+    const res = await fetch(`/api/operate/cases/${c._id_caso}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`,
+      },
+      body: JSON.stringify(body),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail ?? `Error ${res.status}`);
+    }
+
+    const actualizado = await res.json();
+    updateLocal(id, {
+      descripcion: actualizado.desc,
+      estado:      actualizado.estado,
+      gravedad:    actualizado.gravedad,
+      fechaCierre: actualizado.fecha_cierre ?? null,
+    });
+  }, [cases, updateLocal]);
+
+  return { cases, loading, error, reload: load, handleCambiarEstado, handleEditarCaso };
 }
