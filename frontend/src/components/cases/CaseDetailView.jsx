@@ -315,66 +315,88 @@ export function CaseDetailView() {
   );
 
   return (
-    <div className="min-h-screen bg-slate-100 p-6 flex flex-col gap-6">
-      <div className="flex items-center">
-        <Link to="/cases" className="px-4 py-2 rounded-xl border-2 border-blue-900 text-blue-900 font-semibold text-sm hover:bg-blue-50 transition-colors">Volver</Link>
+    <div className="min-h-screen bg-slate-100">
+      {/* Barra superior con volver */}
+      <div className="px-6 pt-6 pb-2">
+        <Link to="/cases" className="px-4 py-2 rounded-xl border-2 border-blue-900 text-blue-900 font-semibold text-sm hover:bg-blue-50 transition-colors inline-block">Volver</Link>
       </div>
-      {/* Tarjeta de información */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 flex flex-col gap-4">
-      
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h1 className="text-4xl font-bold text-blue-900 font-serif">{caso.id}</h1>
 
-            {/*alumno con su curso*/}
-            {alumno && (
-              <p className="text-base text-gray-600 mt-1">
-                <span className="font-semibold">{alumno.nombre}</span>
-                <span className="text-gray-600"> · {alumno.nombre_curso}</span>
-              </p>
-            )}
+      {/* Layout de dos columnas */}
+      <div className="flex gap-6 px-6 pb-6 items-start">
+
+        {/* ── Columna izquierda: info del caso (fija) ── */}
+        <div className="w-72 flex-shrink-0 flex flex-col gap-4 sticky top-6">
+
+          {/* Tarjeta principal */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 flex flex-col gap-4">
+            <div>
+              <h1 className="text-3xl font-bold text-blue-900 font-serif">{caso.id}</h1>
+              {alumno && (
+                <p className="text-sm text-gray-600 mt-1">
+                  <span className="font-semibold">{alumno.nombre}</span>
+                  <span className="text-gray-400"> · {alumno.nombre_curso}</span>
+                </p>
+              )}
+            </div>
+            <div className="flex gap-2 flex-wrap">
+              <EstadoCasoBadge estado={caso.estado} />
+              <GravedadCasoBadge gravedad={caso.gravedad} />
+            </div>
+            <div className="flex flex-col gap-3 pt-3 border-t border-gray-100">
+              <InfoRow label="Fecha de inicio" value={formatFecha(caso.fechaInicio)} />
+              <InfoRow label="Fecha de cierre" value={caso.fechaCierre ? formatFecha(caso.fechaCierre) : "En curso"} />
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1">Descripción</p>
+              <p className="text-sm text-gray-700 leading-relaxed">{caso.descripcion}</p>
+            </div>
           </div>
-          {/* Acciones del caso */}
-          <div className="flex gap-2 flex-shrink-0">
+
+          {/* Botones de acción */}
+          <div className="flex flex-col gap-2">
             <button
               onClick={() => { initEditForm(); setEditando(true); }}
-              className="px-4 py-2 rounded-xl border-2 border-blue-900 text-blue-900 font-semibold text-sm hover:bg-blue-50 transition-colors"
+              className="w-full px-4 py-2.5 rounded-xl border-2 border-blue-900 text-blue-900 font-semibold text-sm hover:bg-blue-50 transition-colors text-center"
             >
               Editar caso
             </button>
             <Link
               to={`/cases/${id}/nuevo-hito`}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-900 text-white font-semibold text-sm hover:bg-blue-800 transition-colors"
+              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-blue-900 text-white font-semibold text-sm hover:bg-blue-800 transition-colors text-center"
             >
               ＋ Agregar hito
             </Link>
           </div>
-        </div>
-        {/* Badges bajo el nombre */}
-        <div className="flex gap-2 flex-wrap">
-          <EstadoCasoBadge estado={caso.estado} />
-          <GravedadCasoBadge gravedad={caso.gravedad} />
+
+          {/* Involucrados */}
+          {caso.estudiantes?.length > 0 && (
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5">
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">Involucrados</p>
+              <div className="flex flex-col gap-2">
+                {[...caso.estudiantes]
+                  .sort((a,b) => a.rol === "autor_agresor" ? -1 : b.rol === "autor_agresor" ? 1 : 0)
+                  .map((e, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <span className="w-7 h-7 rounded-full bg-blue-100 text-blue-900 font-bold text-xs flex items-center justify-center flex-shrink-0">
+                      {e.nombre?.split(" ").map(x => x[0]).join("").slice(0,2).toUpperCase()}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-gray-800 truncate">{e.nombre}</p>
+                      <p className="text-xs text-gray-400">{LABEL_ROL[e.rol] ?? "Sin rol"}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Datos en grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3 pt-2 border-t border-gray-100">
-          <InfoRow label="Fecha de inicio" value={formatFecha(caso.fechaInicio)} />
-          <InfoRow label="Fecha de cierre" value={caso.fechaCierre ? formatFecha(caso.fechaCierre) : "En curso"} />
-        </div>
-
-        <div>
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1">Descripción</p>
-          <p className="text-base text-gray-700 leading-relaxed">{caso.descripcion}</p>
-        </div>
-      </div>
-
-      {/* Línea de tiempo */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-        {/* leyenda de colores */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
+        {/* ── Columna derecha: línea de tiempo ── */}
+        <div className="flex-1 min-w-0">
+          {/* Leyenda */}
+          <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-bold text-gray-500 uppercase tracking-widest">Línea de tiempo</h2>
-            <div className="flex gap-4 mt-2">
+            <div className="flex gap-4">
               <span className="flex items-center gap-1.5 text-sm text-gray-600 font-medium">
                 <span className="w-3.5 h-3.5 rounded-full bg-red-800 inline-block" /> Incidente
               </span>
@@ -383,73 +405,66 @@ export function CaseDetailView() {
               </span>
             </div>
           </div>
-        </div>
 
-        {/*Lista de eventos */}
-        {eventosLineaDeTiempo.length === 0 ? (
-          <div className="text-center py-10 text-gray-400">
-            <p className="font-semibold">No hay eventos registrados aún.</p>
-            <Link to={`/cases/${id}/nuevo-hito`} className="text-blue-600 text-sm hover:underline mt-2 inline-block">
-              Agregar el primer hito
-            </Link>
-          </div>
-        ) : (
-          <div className="relative">
-            {/* Línea vertical centrada en los puntos */}
-            <div className="absolute left-7 top-0 bottom-0 w-0.5 bg-gray-200" />
-            <div className="flex flex-col gap-5">
-              {eventosLineaDeTiempo.map((evento, i) => {
-                const esIncidente = evento._tipo_evento === "incidente";
-                return (
-                  <div
-                    key={evento.id ?? evento.id_hito ?? i}
-                    className="flex gap-4 items-center relative cursor-pointer group"
-                    onClick={() => setEventoSeleccionado(evento)}
-                  >
-                    {/* Circulo con la letra M: medida, T: trámite y I:incidente */}
-                    <div className={`w-14 h-14 rounded-full text-white text-lg font-bold flex items-center justify-center flex-shrink-0 z-10 shadow transition-transform group-hover:scale-110 ${
-                      esIncidente ? "bg-red-800" : "bg-blue-700"
-                    }`}>
-                      {esIncidente ? "I" : evento.tipo === "medida" ? "M" : "T"}
-                    </div>
-
-                    {/* Tarjeta */}
-                    <div className={`flex-1 rounded-xl p-4 border transition-all group-hover:shadow-md ${
-                      esIncidente
-                        ? "bg-red-50 border-red-800 group-hover:border-red-900"
-                        : "bg-blue-50 border-blue-200 group-hover:border-blue-400"
-                    }`}>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          {esIncidente ? (
-                            <span className="text-xs font-bold text-red-900 uppercase tracking-wide">
-                              Incidente · {evento.id}
-                            </span>
-                          ) : (
-                            <>
+          {eventosLineaDeTiempo.length === 0 ? (
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-10 text-center text-gray-400">
+              <p className="font-semibold">No hay eventos registrados aún.</p>
+              <Link to={`/cases/${id}/nuevo-hito`} className="text-blue-600 text-sm hover:underline mt-2 inline-block">
+                Agregar el primer hito
+              </Link>
+            </div>
+          ) : (
+            <div className="relative">
+              <div className="absolute left-7 top-0 bottom-0 w-0.5 bg-gray-200" />
+              <div className="flex flex-col gap-5">
+                {eventosLineaDeTiempo.map((evento, i) => {
+                  const esIncidente = evento._tipo_evento === "incidente";
+                  return (
+                    <div
+                      key={evento.id ?? evento.id_hito ?? i}
+                      className="flex gap-4 items-center relative cursor-pointer group"
+                      onClick={() => setEventoSeleccionado(evento)}
+                    >
+                      <div className={`w-14 h-14 rounded-full text-white text-lg font-bold flex items-center justify-center flex-shrink-0 z-10 shadow transition-transform group-hover:scale-110 ${
+                        esIncidente ? "bg-red-800" : "bg-blue-700"
+                      }`}>
+                        {esIncidente ? "I" : evento.tipo === "medida" ? "M" : "T"}
+                      </div>
+                      <div className={`flex-1 rounded-xl p-4 border transition-all group-hover:shadow-md ${
+                        esIncidente
+                          ? "bg-red-50 border-red-800 group-hover:border-red-900"
+                          : "bg-blue-50 border-blue-200 group-hover:border-blue-400"
+                      }`}>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            {esIncidente ? (
+                              <span className="text-xs font-bold text-red-900 uppercase tracking-wide">
+                                Incidente · {evento.id}
+                              </span>
+                            ) : (
                               <span className="text-xs font-bold uppercase tracking-wide text-blue-800">
                                 {evento.tipo === "medida"
                                   ? `Medida ${labelNivel(evento.nivel_medida) ?? ""}`.trim()
                                   : (labelSubtipo(evento.subtipo_tramite) ?? "Trámite")}
                               </span>
-                            </>
-                          )}
+                            )}
+                          </div>
+                          <span className="text-sm font-medium text-gray-600">{formatFecha(evento.fecha)}</span>
                         </div>
-                        <span className="text-sm font-medium text-gray-600">{formatFecha(evento.fecha)}</span>
+                        <p className="text-base text-gray-700 mt-1.5 line-clamp-2">
+                          {esIncidente ? evento.descripcion : evento.desc}
+                        </p>
+                        <p className={`text-xs mt-2 font-bold ${esIncidente ? "text-red-900" : "text-blue-800"}`}>
+                          Ver detalle →
+                        </p>
                       </div>
-                      <p className="text-base text-gray-700 mt-1.5 line-clamp-2">
-                        {esIncidente ? evento.descripcion : evento.desc}
-                      </p>
-                      <p className={`text-xs mt-2 font-bold ${esIncidente ? "text-red-900" : "text-blue-800"}`}>
-                        Ver detalle →
-                      </p>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {eventoSeleccionado && (
