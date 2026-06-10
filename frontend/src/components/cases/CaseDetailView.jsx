@@ -368,21 +368,19 @@ export function CaseDetailView() {
             </Link>
           </div>
 
-          {/* Involucrados */}
+          {/* Involucrados — solo nombres, sin rol para evitar confusiones */}
           {caso.estudiantes?.length > 0 && (
             <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5">
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">Involucrados</p>
               <div className="flex flex-col gap-2">
-                {[...caso.estudiantes]
-                  .sort((a,b) => a.rol === "autor_agresor" ? -1 : b.rol === "autor_agresor" ? 1 : 0)
-                  .map((e, i) => (
+                {caso.estudiantes.map((e, i) => (
                   <div key={i} className="flex items-center gap-2">
-                    <span className="w-7 h-7 rounded-full bg-blue-100 text-blue-900 font-bold text-xs flex items-center justify-center flex-shrink-0">
+                    <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-900 font-bold text-xs flex items-center justify-center flex-shrink-0">
                       {e.nombre?.split(" ").map(x => x[0]).join("").slice(0,2).toUpperCase()}
                     </span>
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-gray-800 truncate">{e.nombre}</p>
-                      <p className="text-xs text-gray-400">{LABEL_ROL[e.rol] ?? "Sin rol"}</p>
+                      <p className="text-sm text-gray-800 truncate">{e.nombre}</p>
+                      <p className="text-xs text-gray-400">{e.nombre_curso}</p>
                     </div>
                   </div>
                 ))}
