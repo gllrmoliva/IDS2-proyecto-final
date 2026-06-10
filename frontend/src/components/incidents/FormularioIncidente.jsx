@@ -86,7 +86,7 @@ export default function FormularioIncidente() {
     try {
       if (USE_MOCK) {  }
 
-      const token = sessionStorage.getItem('panoptes_token') || activeToken; // Asegura tener el token
+      const token = localStorage.getItem("access_token") || activeToken; // Asegura tener el token
 
       // 1. Usar FormData
       const formDataToSend = new FormData();

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
+import { BuscadorEstudiante } from "../shared/StudentSearch";
 
 //medidas, quizá se podría agregar algo más específico (???)
 const NIVEL_MEDIDA = [
@@ -50,13 +51,15 @@ export function FormularioHito() {
   const { id } = useParams(); //id del caso
   const navigate = useNavigate();
 
-  const [fechaMinima, setFechaMinima] = useState(""); //fecha de inicio del caso para evitar que se cierre antes de eso
+  const [fechaMinima, setFechaMinima] = useState("");
+  const [estudiantesDelCaso, setEstudiantesDelCaso] = useState([]);
+  const [estudiantesSeleccionados, setEstudiantesSeleccionados] = useState([]);
+  const [estudiantesExtra, setEstudiantesExtra] = useState([]); // alumnos agregados fuera del caso
 
-  
   useEffect(() => {
     const token = localStorage.getItem("access_token");
     if (!token) return;
-    fetch("/api/operate/cases/read", { 
+    fetch("/api/operate/cases/read", {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then(r => r.ok ? r.json() : [])
@@ -64,9 +67,25 @@ export function FormularioHito() {
         const idNumerico = parseInt(id.replace("CASO-", ""), 10);
         const caso = data.find(c => c.id_caso === idNumerico);
         if (caso?.fecha_inicio) setFechaMinima(caso.fecha_inicio);
+        if (caso?.estudiantes) {
+          setEstudiantesDelCaso(caso.estudiantes.map(e => ({
+            id_estudiante: e.estudiante.id_estudiante,
+            nombre:        e.estudiante.nombre,
+            nombre_curso:  e.estudiante.nombre_curso ?? "—",
+            rol:           e.rol ?? null,
+          })));
+        }
       })
       .catch(() => {});
   }, [id]);
+
+  const toggleEstudiante = (id_estudiante) => {
+    setEstudiantesSeleccionados(prev =>
+      prev.includes(id_estudiante)
+        ? prev.filter(x => x !== id_estudiante)
+        : [...prev, id_estudiante]
+    );
+  };
 
   // default del formulario
   const [tipo, setTipo]                   = useState("tramite");
@@ -118,9 +137,11 @@ export function FormularioHito() {
         formPayload.append("subtipo_tramite",   subtipo);
       }
 
-      // requerimiento del backend, preguntar si hay que mostrar los estudiantes
-      // vinculados al hito
-      formPayload.append("estudiantes_ids_json", "[]");
+      const todosIds = [
+        ...estudiantesSeleccionados,
+        ...estudiantesExtra.map(e => e.id_estudiante),
+      ].filter((id, i, arr) => arr.indexOf(id) === i);
+      formPayload.append("estudiantes_ids_json", JSON.stringify(todosIds));
 
       // adjuntar archivos seleccionados
       archivos.forEach(({ file }) => formPayload.append("archivos", file));
@@ -266,6 +287,61 @@ export function FormularioHito() {
           />
         </div>
 
+        {/* Estudiantes involucrados en el hito */}
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-2">
+            Estudiantes involucrados <span className="text-gray-400 font-normal">(opcional)</span>
+          </label>
+
+          {/* Checkboxes: alumnos del caso */}
+          {estudiantesDelCaso.length > 0 && (
+            <div className="flex flex-col gap-2 mb-3">
+              {estudiantesDelCaso.map(est => (
+                <label key={est.id_estudiante} className="flex items-center gap-3 px-3 py-2 border border-gray-200 rounded-lg cursor-pointer hover:bg-blue-50 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={estudiantesSeleccionados.includes(est.id_estudiante)}
+                    onChange={() => toggleEstudiante(est.id_estudiante)}
+                    className="w-4 h-4 accent-blue-700"
+                  />
+                  <span className="flex-1 text-sm text-gray-800 font-medium">{est.nombre}</span>
+                  <span className="text-xs text-gray-400">{est.nombre_curso}</span>
+                </label>
+              ))}
+            </div>
+          )}
+
+          {/* Buscador: alumnos fuera del caso */}
+          <p className="text-xs text-gray-500 mb-1">Agregar otro estudiante no vinculado al caso:</p>
+          <BuscadorEstudiante
+            placeholder="Buscar por nombre, RUT o curso…"
+            excluir={[
+              ...estudiantesDelCaso.map(e => e.id_estudiante),
+              ...estudiantesExtra.map(e => e.id_estudiante),
+            ]}
+            onSeleccionar={est => {
+              if (est) setEstudiantesExtra(prev => [...prev, est]);
+            }}
+          />
+
+          {/* Lista de alumnos extra agregados */}
+          {estudiantesExtra.length > 0 && (
+            <ul className="mt-2 flex flex-col gap-1">
+              {estudiantesExtra.map(est => (
+                <li key={est.id_estudiante} className="flex items-center justify-between px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700">
+                  <span className="font-medium">{est.nombre}</span>
+                  <span className="text-xs text-gray-400 mx-2">{est.nombre_curso}</span>
+                  <button
+                    type="button"
+                    onClick={() => setEstudiantesExtra(prev => prev.filter(e => e.id_estudiante !== est.id_estudiante))}
+                    className="text-red-400 hover:text-red-600 font-bold flex-shrink-0"
+                  >✕</button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
         {/* Documentos */}
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-1">Documentos adjuntos</label>
@@ -275,7 +351,7 @@ export function FormularioHito() {
             </svg>
             {/* contador de archivos */}
             <span className="font-semibold text-gray-600">
-              {archivos.length > 0 ? `${archivos.length} archivo${archivos.length !== 1 ? "s" : ""} seleccionado${archivos.length !== 1 ? "s" : ""} — clic para agregar más` : "Clic para seleccionar archivos"}
+              {archivos.length > 0 ? `${archivos.length} archivo${archivos.length !== 1 ? "s" : ""} seleccionado${archivos.length !== 1 ? "s" : ""}  clic para agregar más` : "Clic para seleccionar archivos"}
             </span>
             <span className="text-xs text-gray-400">Puedes seleccionar varios a la vez</span>
             <input type="file" multiple onChange={handleArchivos} className="hidden" />

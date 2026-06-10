@@ -84,19 +84,20 @@ function DocLinks({ documentos }) {
   const handleAbrir = async (id_doc) => {
     setAbriendo(id_doc);
     try {
-      const token = sessionStorage.getItem("panoptes_token");
+      const token = localStorage.getItem("access_token");
       const r = await fetch(`/api/documents/documentos/${id_doc}/url`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!r.ok) throw new Error();
-      // esto crea un url temporal en memoria
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({}));
+        throw new Error(err.detail ?? `Error ${r.status}`);
+      }
       const blob = await r.blob();
       const url = URL.createObjectURL(blob);
       window.open(url, "_blank");
-      // despues de 30s revocar la url para liberar memoria
       setTimeout(() => URL.revokeObjectURL(url), 30000);
-    } catch {
-      alert("No se pudo cargar el archivo.");
+    } catch (e) {
+      alert(`No se pudo cargar el archivo: ${e.message}`);
     } finally {
       setAbriendo(null);
     }
@@ -209,6 +210,24 @@ function EventoModal({ evento, onClose }) {
                 <p className="text-sm text-gray-700 leading-relaxed">{evento.desc}</p>
               </div>
               <div>
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">Involucrados</p>
+                {evento.estudiantes?.length > 0 ? (
+                  <div className="flex flex-col gap-1">
+                    {evento.estudiantes.map((est, i) => (
+                      <div key={est.id_estudiante ?? i} className="flex items-center gap-2 text-sm py-1 border-b border-gray-100 last:border-0">
+                        <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-900 font-bold text-xs flex items-center justify-center flex-shrink-0">
+                          {est.nombre?.split(" ").map(x => x[0]).join("").slice(0, 2).toUpperCase()}
+                        </span>
+                        <span className="font-medium text-gray-800 flex-1">{est.nombre}</span>
+                        <span className="text-xs text-gray-400">{est.nombre_curso}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-400 italic">Sin involucrados.</p>
+                )}
+              </div>
+              <div>
                 <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">Documentos</p>
                 <DocLinks documentos={evento.documentos} />
               </div>
@@ -248,10 +267,17 @@ export function CaseDetailView() {
 
   const caso = cases.find(c => c.id === id); //Busca el caso
 
-  // filtrar incidentes que pertenecen a este caso
-  const incidentesDelCaso = incidents.filter(inc =>
-    inc._id_caso === caso?._id_caso || inc._id_caso_acumulado === caso?._id_caso
-  );
+  // filtrar incidentes que pertenecen a este caso y deduplicar por contenido
+  const incidentesDelCaso = incidents
+    .filter(inc => inc._id_caso === caso?._id_caso)
+    .filter((inc, idx, arr) =>
+      arr.findIndex(other =>
+        other.fecha === inc.fecha &&
+        other.descripcion === inc.descripcion &&
+        other.gravedad === inc.gravedad &&
+        other.categoria === inc.categoria
+      ) === idx
+    );
 
   // Involucrado principal: autor_agresor o el primero
   const alumno = caso?.estudiantes
@@ -456,16 +482,16 @@ export function CaseDetailView() {
               </div>
               {/* Fecha de cierre*/}
               {editForm.estado === "cerrado" && (
-                <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex flex-col gap-2">
-                  <label className="block text-sm font-semibold text-amber-800">Fecha de cierre</label>
-                  <p className="text-xs text-amber-700">Confirma la fecha en que se cierra formalmente este caso. No puede ser anterior a la apertura ({formatFecha(caso.fechaInicio)}).</p>
+                <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex flex-col gap-2">
+                  <label className="block text-sm font-semibold text-red-900">Fecha de cierre</label>
+                  <p className="text-xs text-red-800">Confirma la fecha en que se cierra formalmente este caso. No puede ser anterior a la apertura ({formatFecha(caso.fechaInicio)}).</p>
                   <input
                     type="date"
                     required
                     min={caso.fechaInicio}
                     value={editForm.fecha_cierre}
                     onChange={e => setEditForm(f => ({ ...f, fecha_cierre: e.target.value }))}
-                    className="w-full px-4 py-2 border border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-400 outline-none transition text-gray-700 bg-white"
+                    className="w-full px-4 py-2 border border-red-300 rounded-lg focus:ring-2 focus:ring-red-400 outline-none transition text-gray-700 bg-white"
                   />
                 </div>
               )}

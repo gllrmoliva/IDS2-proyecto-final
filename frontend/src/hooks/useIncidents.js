@@ -21,6 +21,7 @@ function mapIncident(inc) {
   return {
     id:            `INC-${String(inc.id_incidente).padStart(3, "0")}`,
     _id_incidente: inc.id_incidente,
+    _id_caso:      inc.id_caso ?? null,
     fecha:         inc.fecha,
     tipo:          inc.categoria ?? (inc.desc?.split(".")[0] ?? "Incidente"),
     categoria:     inc.categoria ?? null,

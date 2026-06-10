@@ -133,7 +133,12 @@ export function CaseMonitorView() {
                     <td className="px-4 py-3"><GravedadCasoBadge gravedad={c.gravedad} /></td> 
                     <td className="px-4 py-3"><EstadoCasoBadge estado={c.estado} /></td>
                     <td className="px-4 py-3 text-xs">{c.hitos.length} hito{c.hitos.length !== 1 ? "s" : ""}</td>
-                    <td className="px-4 py-3 text-xs">{incidents.filter(i => i._id_caso === c._id_caso || i._id_caso_acumulado === c._id_caso).length}</td>
+                    <td className="px-4 py-3 text-xs">{incidents
+                      .filter(i => i._id_caso === c._id_caso)
+                      .filter((i, idx, arr) => arr.findIndex(o =>
+                        o.fecha === i.fecha && o.descripcion === i.descripcion && o.gravedad === i.gravedad && o.categoria === i.categoria
+                      ) === idx)
+                      .length}</td>
                   </tr>
                 ))}
               </tbody>

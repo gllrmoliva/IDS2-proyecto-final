@@ -87,22 +87,19 @@ export default function FormularioCaso() {
         return;
       }
 
-      const token = sessionStorage.getItem('panoptes_token');
-      const userRaw = sessionStorage.getItem('panoptes_user');
-      const user = userRaw ? JSON.parse(userRaw) : null;
+      const token = localStorage.getItem('access_token');
 
-      // 1. Instanciar objeto FormData para transmisión multipart
+      // Instanciar objeto FormData para transmisión
       const formDataToSend = new FormData();
-      
-      // 2. Adjuntar los campos básicos requeridos por CasoCreate
-      formDataToSend.append("id_coordinador", user?.id_usuario ?? '');
+
+      // Adjuntar los campos básicos requeridos por CasoCreate
       formDataToSend.append("desc", formData.desc);
       formDataToSend.append("fecha_inicio", formData.fecha_inicio);
       formDataToSend.append("gravedad", formData.gravedad);
       formDataToSend.append("categoria", formData.categoria);
       formDataToSend.append("estado", "abierto");
 
-      // 3. Reconstruir y serializar la estructura relacional de los estudiantes involucrados
+      // Reconstruir y serializar la estructura relacional de los estudiantes involucrados
       const estudiantesPayload = [];
       
       if (estudiantePrincipal?.id_estudiante) {
@@ -123,12 +120,12 @@ export default function FormularioCaso() {
       
       formDataToSend.append("estudiantes_json", JSON.stringify(estudiantesPayload));
 
-      // 4. Inyectar los binarios de archivos recolectados en el input
+      //Inyectar los binarios de archivos recolectados en el input
       archivos.forEach(file => {
         formDataToSend.append("archivos", file);
       });
 
-      // 5. Despachar la petición sin Content-Type explícito
+      //Despachar la petición sin Content-Type explícito
       const res = await fetch('/api/operate/cases/', {
         method: 'POST',
         headers: {
@@ -142,12 +139,14 @@ export default function FormularioCaso() {
         const detalleError = Array.isArray(err.detail) 
           ? JSON.stringify(err.detail, null, 2) 
           : err.detail;
-          
         console.error("Detalle del error de validación del Caso:", detalleError);
         throw new Error(detalleError ?? `Error ${res.status}`);
       }
+    
 
-      setMensaje({ texto: 'Caso creado exitosamente en Panoptes.', tipo: 'success' });
+      await res.json();
+
+      setMensaje({ texto: 'Caso creado exitosamente.', tipo: 'success' });
       setFormData({ fecha_inicio: '', desc: '', gravedad: 'leve', categoria: 'violencia_fisica' });
       setEstudiantePrincipal(null);
       setRolPrincipal(null);
@@ -324,7 +323,7 @@ export default function FormularioCaso() {
               loading ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 active:scale-95'
             }`}
           >
-            {loading ? 'Creando...' : 'Crear Caso'}
+            {loading ? 'Creando' : 'Crear Caso'}
           </button>
         </div>
       </form>
