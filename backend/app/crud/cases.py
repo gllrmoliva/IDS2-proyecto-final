@@ -587,3 +587,50 @@ async def create_hito_completo(
 
     hito_completo = result_reload.scalar_one()
     return hito_completo
+
+async def get_caso_by_id(
+    db: AsyncSession, id_caso: int, user) -> Caso:
+    stmt = select(Caso).options(
+        
+        # Estudiantes del caso con su curso
+        selectinload(Caso.estudiantes)
+            .selectinload(EstudianteCaso.estudiante)
+            .selectinload(Estudiante.curso),
+
+        # Hitos con sus documentos y estudiantes vinculados
+        selectinload(Caso.hitos).options(
+            selectinload(Hito.documentos),
+            selectinload(Hito.estudiantes)
+        ),
+
+        # Incidentes del caso con productor, documentos y estudiantes
+        selectinload(Caso.incidentes).options(
+            selectinload(Incidente.productor),
+            selectinload(Incidente.documentos),
+            selectinload(Incidente.estudiantes)
+                .selectinload(EstudianteIncidente.estudiante)
+                .selectinload(Estudiante.curso)
+        ),
+    ).where(Caso.id_caso == id_caso)
+
+    # Restricciones por rol
+    if user.tipo_usuario == "profesor_jefe":
+        stmt = stmt.where(
+            Caso.estudiantes.any(
+                EstudianteCaso.estudiante.has(
+                    Estudiante.curso.has(Curso.id_pj == user.id_usuario)
+                )
+            )
+        )
+    elif user.tipo_usuario == "productor":
+        stmt = stmt.where(
+            Caso.incidentes.any(Incidente.id_productor == user.id_usuario)
+        )
+
+    result = await db.execute(stmt)
+    caso = result.scalars().unique().one_or_none()
+
+    if not caso:
+        raise EntityNotFoundError(f"Caso con ID {id_caso} no encontrado.")
+
+    return caso
