@@ -303,6 +303,7 @@ async def create_case(
         
     return caso_cargado
   
+
 @router.patch("/cases/{id_caso}", response_model=CasoResponse)
 async def update_case(
     id_caso: int,
