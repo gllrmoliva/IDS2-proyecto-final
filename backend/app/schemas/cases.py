@@ -169,7 +169,10 @@ class CasoUpdate(BaseModel):
     gravedad: Optional[Gravedad] = None
     categoria: Optional[CategoriaConvivencia] = None
     fecha_cierre: Optional[date] = None
-
+    hitos_a_eliminar: Optional[List[int]] = Field(default_factory=list)  # IDs de hitos
+    incidentes_a_eliminar: Optional[List[int]] = Field(default_factory=list)  # IDs de incidentes
+    
+    model_config = {"from_attributes": True}
       
 class HitoCreate(BaseModel):
     tipo: TipoHito
@@ -177,6 +180,10 @@ class HitoCreate(BaseModel):
     desc: str
     fecha: date = Field(default_factory=date.today)
     estudiantes_ids: List[str] = Field(default_factory=list, description="Lista de IDs de estudiantes vinculados a este hito")
+
+    nivel_medida: Optional[NivelMedida] = None
+    categoria_tramite: Optional[CategoriaTramite] = None
+    subtipo_tramite: Optional[SubtipoTramite] = None
 
     model_config = ConfigDict(from_attributes=True)
 

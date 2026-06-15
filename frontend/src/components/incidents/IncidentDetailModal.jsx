@@ -112,17 +112,20 @@ function EvidenciaLinks({ documentos }) {
   const handleAbrir = async (id_doc) => {
     setAbriendo(id_doc);
     try {
-      const token = sessionStorage.getItem("panoptes_token");
+      const token = localStorage.getItem("access_token");
       const r = await fetch(`/api/documents/documentos/${id_doc}/url`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!r.ok) throw new Error();
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({}));
+        throw new Error(err.detail ?? `Error ${r.status}`);
+      }
       const blob = await r.blob();
       const url = URL.createObjectURL(blob);
       window.open(url, '_blank');
       setTimeout(() => URL.revokeObjectURL(url), 30000);
-    } catch {
-      alert("No se pudo cargar el archivo.");
+    } catch (e) {
+      alert(`No se pudo cargar el archivo: ${e.message}`);
     } finally {
       setAbriendo(null);
     }

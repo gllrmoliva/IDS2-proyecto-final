@@ -1,31 +1,8 @@
-// useIncidents.js
+// src/hooks/useIncidents.js
 import { useState, useEffect, useCallback } from "react";
 import { MOCK_INCIDENTS } from "../data/mockIncidents";
 
 const USE_MOCK = false;
-
-//  HOTFIX: Auto-login para desarrollo 
-const fetchDevToken = async () => {
-  const res = await fetch("/api/auth/token", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    // FastAPI requiere Form Data para el login, no JSON
-    body: new URLSearchParams({
-      username: "ana.silva@colegio.cl",
-      password: "testpassword",
-      //username: "carlos.insp@colegio.cl",
-      //password: "testpassword1",
-      //username: "maria.prof@colegio.cl",
-      //password: "testpassword3",
-    }),
-  });
-  if (!res.ok) throw new Error("Fallo el auto-login de desarrollo");
-  const data = await res.json();
-  return data.access_token;
-};
-
 
 // Mapeo de estados 
 function mapEstadoBackendToFront(estado) {
@@ -39,12 +16,12 @@ function mapEstadoFrontToBackend(estado) {
 
 // Mapeador
 function mapIncident(inc) {
-  // Navegar al primer estudiante real a través de la nueva llave
   const primerEstudiante = inc.estudiantes?.[0]?.estudiante;
   
   return {
     id:            `INC-${String(inc.id_incidente).padStart(3, "0")}`,
     _id_incidente: inc.id_incidente,
+    _id_caso:      inc.id_caso ?? null,
     fecha:         inc.fecha,
     tipo:          inc.categoria ?? (inc.desc?.split(".")[0] ?? "Incidente"),
     categoria:     inc.categoria ?? null,
@@ -63,30 +40,36 @@ function mapIncident(inc) {
     },
     involucrados: (inc.estudiantes ?? []).map(e => ({
       nombre: e.estudiante.nombre,
-      rol:    e.rol ?? "Estudiante", // Extrae el rol real desde la base de datos
+      rol:    e.rol ?? "Estudiante", 
     })),
   };
 }
 
+// LECTURA DE INCIDENTES
 const fetchFromAPI = async (token) => {
   const res = await fetch("/api/operate/incidents/read", {
     headers: {
       "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      "Authorization": `Bearer ${token}`,
     },
   });
+
+  if (res.status === 401 || res.status === 403) {
+    throw new Error("No autorizado. Su sesión podría haber expirado.");
+  }
+
   if (!res.ok) throw new Error(`Error ${res.status}: no se pudo cargar los incidentes`);
   const data = await res.json();
   return data.map(mapIncident);
 };
 
-// PATCH para cambiar estado
+// PATCH PARA CAMBIAR ESTADO
 async function patchIncidentEstado(idIncidente, estado, motivoRechazo = null, token) {
   const res = await fetch(`/api/operate/incidents/${idIncidente}/estado`, {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      "Authorization": `Bearer ${token}`,
     },
     body: JSON.stringify({
       estado: mapEstadoFrontToBackend(estado),
@@ -97,13 +80,13 @@ async function patchIncidentEstado(idIncidente, estado, motivoRechazo = null, to
   return res.json();
 }
 
-// POST para elevar incidente
+// POST PARA ELEVAR INCIDENTE
 async function postElevarIncidente(idIncidente, payload, token) {
   const res = await fetch(`/api/operate/incidents/${idIncidente}/elevar`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      "Authorization": `Bearer ${token}`,
     },
     body: JSON.stringify(payload),
   });
@@ -117,36 +100,30 @@ async function postElevarIncidente(idIncidente, payload, token) {
 const fetchMock = () =>
   new Promise((resolve) => setTimeout(() => resolve(MOCK_INCIDENTS), 600));
 
-export function useIncidents(initialToken = null) {
+export function useIncidents() {
   const [incidents, setIncidents] = useState([]);
   const [loading, setLoading]     = useState(true);
   const [error, setError]         = useState(null);
-  
-  // Guardamos el token en el estado para poder reusarlo en los PATCH
-  const [activeToken, setActiveToken] = useState(initialToken);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      let currentToken = activeToken;
+      const token = localStorage.getItem("access_token");
       
-      // Ejecutar hotfix si no hay token
-      if (!USE_MOCK && !currentToken) {
-        currentToken = await fetchDevToken();
-        setActiveToken(currentToken); // Guardar para uso futuro
-        sessionStorage.setItem("panoptes_token", currentToken);
+      if (!USE_MOCK && !token) {
+        throw new Error("No se encontró un token de sesión.");
       }
 
-      const data = USE_MOCK ? await fetchMock() : await fetchFromAPI(currentToken);
+      const data = USE_MOCK ? await fetchMock() : await fetchFromAPI(token);
       setIncidents(data);
     } catch (e) {
-      setError("No se pudo cargar los incidentes. Intenta nuevamente.");
+      setError(e.message || "No se pudo cargar los incidentes. Intenta nuevamente.");
       console.error(e);
     } finally {
       setLoading(false);
     }
-  }, [activeToken]);
+  }, []);
 
   useEffect(() => { load(); }, [load]);
 
@@ -160,37 +137,51 @@ export function useIncidents(initialToken = null) {
     const inc = incidents.find(i => i.id === id);
     updateLocal(id, { estado: "aprobado" });
     if (!USE_MOCK && inc?._id_incidente) {
-      try { await patchIncidentEstado(inc._id_incidente, "aprobado", null, activeToken); }
-      catch (e) { console.error("Error al aprobar:", e); updateLocal(id, { estado: "pendiente" }); }
+      const token = localStorage.getItem("access_token");
+      try { 
+        await patchIncidentEstado(inc._id_incidente, "aprobado", null, token); 
+      } catch (e) { 
+        console.error("Error al aprobar:", e); 
+        updateLocal(id, { estado: inc.estado }); 
+      }
     }
-  }, [incidents, updateLocal, activeToken]);
+  }, [incidents, updateLocal]);
 
   const handleRechazar = useCallback(async (id, razon) => {
     const inc = incidents.find(i => i.id === id);
     updateLocal(id, { estado: "rechazado", razonRechazo: razon });
     if (!USE_MOCK && inc?._id_incidente) {
-      try { await patchIncidentEstado(inc._id_incidente, "rechazado", razon, activeToken); }
-      catch (e) { console.error("Error al rechazar:", e); updateLocal(id, { estado: "pendiente", razonRechazo: null }); }
+      const token = localStorage.getItem("access_token");
+      try { 
+        await patchIncidentEstado(inc._id_incidente, "rechazado", razon, token); 
+      } catch (e) { 
+        console.error("Error al rechazar:", e); 
+        updateLocal(id, { estado: inc.estado, razonRechazo: inc.razonRechazo }); 
+      }
     }
-  }, [incidents, updateLocal, activeToken]);
+  }, [incidents, updateLocal]);
 
   const handleRevertir = useCallback(async (id) => {
     const inc = incidents.find(i => i.id === id);
     updateLocal(id, { estado: "pendiente", razonRechazo: null });
     if (!USE_MOCK && inc?._id_incidente) {
-      try { await patchIncidentEstado(inc._id_incidente, "pendiente", null, activeToken); }
-      catch (e) { console.error("Error al revertir:", e); }
+      const token = localStorage.getItem("access_token");
+      try { 
+        await patchIncidentEstado(inc._id_incidente, "pendiente", null, token); 
+      } catch (e) { 
+        console.error("Error al revertir:", e); 
+        updateLocal(id, { estado: inc.estado, razonRechazo: inc.razonRechazo });
+      }
     }
-  }, [incidents, updateLocal, activeToken]);
+  }, [incidents, updateLocal]);
 
   const handleElevar = useCallback(async (id, payload) => {
     const inc = incidents.find(i => i.id === id);
     if (!USE_MOCK && inc?._id_incidente) {
-      await postElevarIncidente(inc._id_incidente, payload, activeToken);
-      // Opcional: recargar para que el incidente muestre su nuevo id_caso
-      // load();
+      const token = localStorage.getItem("access_token");
+      await postElevarIncidente(inc._id_incidente, payload, token);
     }
-  }, [incidents, activeToken]);
+  }, [incidents]);
 
   return { 
     incidents, 
@@ -201,6 +192,6 @@ export function useIncidents(initialToken = null) {
     handleAprobar, 
     handleRechazar, 
     handleRevertir,
-    handleElevar // Exportar nueva función
+    handleElevar 
   };
 }

@@ -13,8 +13,14 @@ from app.schemas.token import TokenData
 from app.crud.user import get_user_by_email
 
 from app.database.database import get_db
-from app.database.models import (Gravedad, CategoriaConvivencia, EstadoCaso,
-                                 TipoHito, NivelMedida)
+from app.database.models import (Gravedad,
+                                 CategoriaConvivencia,
+                                 EstadoCaso,
+                                 TipoHito,
+                                 NivelMedida,
+                                 CategoriaTramite,
+                                 SubtipoTramite)
+
 from app.schemas.cases import CasoCreate, EstudianteRolCreate, HitoCreate, IncidentCreate
 from pydantic import ValidationError
 
@@ -122,6 +128,8 @@ def form_to_case_schema(
 def form_to_hito_schema(
     tipo: TipoHito = Form(...),
     nivel_medida: Optional[NivelMedida] = Form(None),
+    categoria_tramite: Optional[CategoriaTramite] = Form(None),
+    subtipo_tramite: Optional[SubtipoTramite] = Form(None),
     desc: str = Form(...),
     fecha: date = Form(default_factory=date.today),
     estudiantes_ids_json: str = Form(
@@ -146,7 +154,9 @@ def form_to_hito_schema(
             nivel_medida=nivel_medida,
             desc=desc,
             fecha=fecha,
-            estudiantes_ids=estudiantes_ids
+            estudiantes_ids=estudiantes_ids,
+            categoria_tramite=categoria_tramite,
+            subtipo_tramite=subtipo_tramite
         )
     except ValidationError as e:
         raise HTTPException(status_code=400, detail=f"Error en los datos del formulario: {str(e)}")

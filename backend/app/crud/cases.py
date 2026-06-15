@@ -404,7 +404,7 @@ async def update_caso(
     payload: CasoUpdate
 ) -> Caso:
     
-    # Eager Loading para satisfacer a Pydantic (gemini me dijo que lo agregara)
+   # Eager Loading para satisfacer a Pydantic (gemini me dijo que lo agregara)
     stmt = select(Caso).options(
         selectinload(Caso.estudiantes)
         .selectinload(EstudianteCaso.estudiante)
@@ -421,33 +421,65 @@ async def update_caso(
     if not caso:
         raise EntityNotFoundError("Caso no encontrado.")
     
+    # Calcular estado final para validación
     estado_final = payload.estado if payload.estado is not None else caso.estado
-    fecha_cierre_final = payload.fecha_cierre if payload.fecha_cierre is not None else caso.fecha_cierre
     
-    if estado_final == EstadoCaso.cerrado and not fecha_cierre_final:
-        raise BusinessLogicError("Se requiere fecha_cierre para cerrar un caso.")
+    # Validar cierre de caso
+    if estado_final == EstadoCaso.cerrado:
+        fecha_cierre_final = payload.fecha_cierre if payload.fecha_cierre is not None else caso.fecha_cierre
+        if not fecha_cierre_final:
+            raise BusinessLogicError("Se requiere fecha_cierre para cerrar un caso.")
     
+    # Eliminar hitos
+    if payload.hitos_a_eliminar:
+        for id_hito in payload.hitos_a_eliminar:
+            stmt_hito = select(Hito).where(
+                (Hito.id_hito == id_hito) & (Hito.id_caso == id_caso)
+            )
+            result_hito = await db.execute(stmt_hito)
+            hito = result_hito.scalar_one_or_none()
+            
+            if hito:
+                db.delete(hito)  # Sin await
+            else:
+                raise EntityNotFoundError(f"Hito {id_hito} no encontrado en este caso.")
+    
+    # Desvincular incidentes (no lo elimina, solo lo libera del caso y lo deja pendiente)
+    if payload.incidentes_a_eliminar:
+        for id_incidente in payload.incidentes_a_eliminar:
+            stmt_inc = select(Incidente).where(
+                (Incidente.id_incidente == id_incidente) & (Incidente.id_caso == id_caso)
+            )
+            result_inc = await db.execute(stmt_inc)
+            incidente = result_inc.scalar_one_or_none()
+            
+            if incidente:
+                incidente.id_caso = None
+                incidente.estado = EstadoIncidente.pendiente
+            else:
+                raise EntityNotFoundError(f"Incidente {id_incidente} no encontrado en este caso.")
+    
+    # Actualizar campos del caso
     if payload.desc is not None:
         caso.desc = payload.desc
-        
+    
     if payload.gravedad is not None:
-        caso.gravedad = payload.gravedad.value if hasattr(payload.gravedad, 'value') else payload.gravedad
-        
+        caso.gravedad = payload.gravedad
+    
     if payload.categoria is not None:
-        caso.categoria = payload.categoria.value if hasattr(payload.categoria, 'value') else payload.categoria
-
+        caso.categoria = payload.categoria
+    
     if payload.estado is not None:
         caso.estado = payload.estado
-        # Si se reabre el caso, limpiar la fecha de cierre
         if payload.estado == EstadoCaso.abierto:
             caso.fecha_cierre = None
-            
-    if payload.fecha_cierre is not None and estado_final == EstadoCaso.cerrado:
-        caso.fecha_cierre = payload.fecha_cierre
+        elif payload.estado == EstadoCaso.cerrado:
+            caso.fecha_cierre = payload.fecha_cierre
     
     await db.commit()
     return caso
   
+
 async def create_hito_completo(
     db: AsyncSession,
     id_caso: int,
@@ -455,6 +487,7 @@ async def create_hito_completo(
     archivos: List[UploadFile],
     minio_client
 ) -> Hito:
+
     # verificar exitencia de caso
     stmt_caso = select(Caso).where(Caso.id_caso == id_caso)
     result_caso = await db.execute(stmt_caso)
@@ -474,7 +507,9 @@ async def create_hito_completo(
         tipo=hito_in.tipo.value if hasattr(hito_in.tipo, 'value') else hito_in.tipo,
         nivel_medida=hito_in.nivel_medida.value if hasattr(hito_in.nivel_medida, 'value') and hito_in.nivel_medida else hito_in.nivel_medida,
         desc=hito_in.desc,
-        fecha=hito_in.fecha
+        fecha=hito_in.fecha,
+        categoria_tramite=hito_in.categoria_tramite,
+        subtipo_tramite=hito_in.subtipo_tramite
     )
     db.add(nuevo_hito)
 
@@ -552,3 +587,50 @@ async def create_hito_completo(
 
     hito_completo = result_reload.scalar_one()
     return hito_completo
+
+async def get_caso_by_id(
+    db: AsyncSession, id_caso: int, user) -> Caso:
+    stmt = select(Caso).options(
+        
+        # Estudiantes del caso con su curso
+        selectinload(Caso.estudiantes)
+            .selectinload(EstudianteCaso.estudiante)
+            .selectinload(Estudiante.curso),
+
+        # Hitos con sus documentos y estudiantes vinculados
+        selectinload(Caso.hitos).options(
+            selectinload(Hito.documentos),
+            selectinload(Hito.estudiantes)
+        ),
+
+        # Incidentes del caso con productor, documentos y estudiantes
+        selectinload(Caso.incidentes).options(
+            selectinload(Incidente.productor),
+            selectinload(Incidente.documentos),
+            selectinload(Incidente.estudiantes)
+                .selectinload(EstudianteIncidente.estudiante)
+                .selectinload(Estudiante.curso)
+        ),
+    ).where(Caso.id_caso == id_caso)
+
+    # Restricciones por rol
+    if user.tipo_usuario == "profesor_jefe":
+        stmt = stmt.where(
+            Caso.estudiantes.any(
+                EstudianteCaso.estudiante.has(
+                    Estudiante.curso.has(Curso.id_pj == user.id_usuario)
+                )
+            )
+        )
+    elif user.tipo_usuario == "productor":
+        stmt = stmt.where(
+            Caso.incidentes.any(Incidente.id_productor == user.id_usuario)
+        )
+
+    result = await db.execute(stmt)
+    caso = result.scalars().unique().one_or_none()
+
+    if not caso:
+        raise EntityNotFoundError(f"Caso con ID {id_caso} no encontrado.")
+
+    return caso

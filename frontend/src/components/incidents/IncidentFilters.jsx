@@ -24,7 +24,7 @@ export function IncidentFilters({ filters, onChange }) {
   const [cursos, setCursos] = useState(["todos"]);
 
   useEffect(() => {
-    const token = sessionStorage.getItem("panoptes_token");
+    const token = localStorage.getItem("access_token");
     fetch("/api/students/courses/get_all", {
       headers: { Authorization: `Bearer ${token}` },
     })

@@ -21,23 +21,7 @@ export function BuscadorEstudiante({ placeholder, onSeleccionar, excluir = [], e
 
     const fetchEstudiantes = async () => {
       try {
-        // Obtener token — si no hay en sesión, hacer auto-login (mismo patrón que useIncidents)
-        let token = sessionStorage.getItem("panoptes_token");
-        if (!token) {
-          const loginRes = await fetch("/api/auth/token", {
-            method: "POST",
-            headers: { "Content-Type": "application/x-www-form-urlencoded" },
-            body: new URLSearchParams({
-              username: "ana.silva@colegio.cl",
-              password: "testpassword",
-            }),
-          });
-          if (loginRes.ok) {
-            const loginData = await loginRes.json();
-            token = loginData.access_token;
-            sessionStorage.setItem("panoptes_token", token);
-          }
-        }
+        const token = localStorage.getItem("access_token");
 
         const response = await fetch("/api/students/get_all", {
           method: "GET",
