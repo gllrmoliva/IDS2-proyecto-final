@@ -152,7 +152,7 @@ function EventoModal({ evento, onClose }) {
           </div>
           <button onClick={onClose}
             className="ml-4 px-4 py-2 rounded-xl border-2 border-gray-300 text-gray-600 font-bold text-sm hover:bg-gray-50 transition-colors">
-            Cancelar
+            Cerrar
           </button>
         </div>
         <div className="overflow-y-auto p-6 flex flex-col gap-4">
@@ -255,9 +255,36 @@ export function CaseDetailView() {
   const { cases, loading: loadingCases, error: errorCases, reload, handleEditarCaso } = useCases(); // Datos del casp y sus hitos
   const { incidents, loading: loadingInc } = useIncidents();// Incidentes
   const [eventoSeleccionado, setEventoSeleccionado] = useState(null);
+  const [generandoReporte, setGenerandoReporte] = useState(false);
 
   // Recargar al entrar para tener hitos y documentos actualizados
   useEffect(() => { reload(); }, []);
+
+  // Generación de reporte PDF del caso.
+  // (GET /api/reports/cases/{id}/pdf) 
+  // descargará el PDF renderizado
+  const handleGenerarReporte = async () => {
+    setGenerandoReporte(true);
+    try {
+      const token = localStorage.getItem("access_token");
+      const res = await fetch(`/api/reports/cases/${caso._id_caso}/pdf`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error(`El servicio de reportes aún no está disponible (${res.status}).`);
+      // Cuando el endpoint exista, descarga el blob:
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `reporte_${caso.id}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      alert(`No se pudo generar el reporte: ${e.message}`);
+    } finally {
+      setGenerandoReporte(false);
+    }
+  };
 
   // Estado del modal de edición del caso
   const [editando, setEditando] = useState(false);
@@ -320,11 +347,9 @@ export function CaseDetailView() {
       <div className="px-6 pt-6 pb-2">
         <Link to="/cases" className="px-4 py-2 rounded-xl border-2 border-blue-900 text-blue-900 font-semibold text-sm hover:bg-blue-50 transition-colors inline-block">Volver</Link>
       </div>
-
-      {/* Layout de dos columnas */}
       <div className="flex gap-6 px-6 pb-6 items-start">
 
-        {/* ── Columna izquierda: info del caso (fija) ── */}
+        {/* Columna izquierda: info del caso */}
         <div className="w-72 flex-shrink-0 flex flex-col gap-4 sticky top-6">
 
           {/* Tarjeta principal */}
@@ -366,9 +391,21 @@ export function CaseDetailView() {
             >
               ＋ Agregar hito
             </Link>
+            {/* Boton de reporte */}
+            <button
+              onClick={handleGenerarReporte}
+              disabled={generandoReporte}
+              className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border-2 font-semibold text-sm transition-colors text-center ${
+                generandoReporte
+                  ? "border-gray-300 text-gray-400 cursor-not-allowed"
+                  : "bg-[#a67c00] border-[#a67c00] text-white hover:bg-[#8a6800]"
+              }`}
+            >
+              {generandoReporte ? "Generando…" : "Generar reporte"}
+            </button>
           </div>
 
-          {/* Involucrados — solo nombres, sin rol para evitar confusiones */}
+          {/* Involucrados solo nombres */}
           {caso.estudiantes?.length > 0 && (
             <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5">
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">Involucrados</p>
@@ -389,7 +426,7 @@ export function CaseDetailView() {
           )}
         </div>
 
-        {/* ── Columna derecha: línea de tiempo ── */}
+        {/*  Columna derecha: línea de tiempo  */}
         <div className="flex-1 min-w-0">
           {/* Leyenda */}
           <div className="flex items-center justify-between mb-4">
