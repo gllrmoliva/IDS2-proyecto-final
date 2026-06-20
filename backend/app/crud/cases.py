@@ -440,7 +440,7 @@ async def update_caso(
             hito = result_hito.scalar_one_or_none()
             
             if hito:
-                db.delete(hito)  # Sin await
+                await db.delete(hito)  # Con await
             else:
                 raise EntityNotFoundError(f"Hito {id_hito} no encontrado en este caso.")
     
