@@ -307,7 +307,7 @@ async def create_case(
 @router.patch("/cases/{id_caso}", response_model=CasoResponse)
 async def update_case(
     id_caso: int,
-    payload: CasoUpdate,  # Schema nuevo (ver abajo)
+    payload: CasoUpdate,  
     current_user: Annotated[
         dict, Depends(RoleChecker(allowed_roles=["coordinador"]))
     ],
@@ -315,11 +315,28 @@ async def update_case(
 ):
     """Permite al Coordinador modificar un caso existente."""
     try:
-        caso_actualizado = await update_caso(
+        await update_caso(
             db=db,
             id_caso=id_caso,
             payload=payload
         )
+        stmt = select(Caso).options(
+            selectinload(Caso.estudiantes)
+                .selectinload(EstudianteCaso.estudiante)
+                .selectinload(Estudiante.curso),
+            selectinload(Caso.hitos).options(
+                selectinload(Hito.documentos),
+                selectinload(Hito.estudiantes)
+            )
+        ).where(Caso.id_caso == id_caso)
+
+        result = await db.execute(stmt)
+        caso_actualizado = result.scalar_one_or_none()
+
+        if not caso_actualizado:
+            raise HTTPException(status_code=404, detail="Caso no encontrado tras actualización.")
+
+        
         return caso_actualizado
     except EntityNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
