@@ -433,7 +433,9 @@ async def update_caso(
     # Eliminar hitos
     if payload.hitos_a_eliminar:
         for id_hito in payload.hitos_a_eliminar:
-            stmt_hito = select(Hito).where(
+            stmt_hito = select(Hito).options(
+            selectinload(Hito.documentos)  
+        ).where(
                 (Hito.id_hito == id_hito) & (Hito.id_caso == id_caso)
             )
             result_hito = await db.execute(stmt_hito)
