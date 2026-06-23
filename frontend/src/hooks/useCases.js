@@ -41,6 +41,25 @@ const fetchFromAPI = async (token) => {
   return data.map(mapCase);
 };
 
+// Función base para llamar al PATCH de casos
+async function patchCaso(idCaso, payload, token) {
+  const res = await fetch(`/api/operate/cases/${idCaso}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail ?? `Error ${res.status}`);
+  }
+
+  return res.json(); // retorna CasoResponse completo y fresco
+}
+
 const fetchMock = () =>
   new Promise((resolve) => setTimeout(() => resolve(MOCK_CASES.map(mapCase)), 600));
 
@@ -116,21 +135,8 @@ export function useCases() {
       fecha_cierre: editForm.fecha_cierre  || null,
     };
 
-    const res = await fetch(`/api/operate/cases/${c._id_caso}`, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`,
-      },
-      body: JSON.stringify(body),
-    });
+      const actualizado = await patchCaso(c._id_caso, body, token);
 
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.detail ?? `Error ${res.status}`);
-    }
-
-    const actualizado = await res.json();
     updateLocal(id, {
       descripcion: actualizado.desc,
       estado:      actualizado.estado,
@@ -139,5 +145,32 @@ export function useCases() {
     });
   }, [cases, updateLocal]);
 
-  return { cases, loading, error, reload: load, handleCambiarEstado, handleEditarCaso };
+// Elimina un hito del caso y actualiza el estado local con la respuesta del backend
+  const handleEliminarHito = useCallback(async (id, idHito) => {
+    const c = cases.find(x => x.id === id);
+    if (!c) return;
+
+    const token = localStorage.getItem("access_token");
+    const actualizado = await patchCaso(c._id_caso, { hitos_a_eliminar: [idHito] }, token);
+
+    // Reemplazamos los hitos con los que devuelve el backend (ya sin el eliminado)
+    updateLocal(id, {
+      hitos: [...(actualizado.hitos ?? [])].sort((a, b) => new Date(a.fecha) - new Date(b.fecha)),
+    });
+  }, [cases, updateLocal]);
+
+  // Desvincula un incidente del caso (queda pendiente, no se borra)
+  const handleDesvincularIncidente = useCallback(async (id, idIncidente) => {
+    const c = cases.find(x => x.id === id);
+    if (!c) return;
+
+    const token = localStorage.getItem("access_token");
+    await patchCaso(c._id_caso, { incidentes_a_eliminar: [idIncidente] }, token);
+
+    // CasoResponse no incluye incidentes, así que solo recargamos si es necesario.
+    // Si tu vista de caso muestra incidentes, llama a reload() aquí en vez de updateLocal.
+  }, [cases]);
+
+
+  return { cases, loading, error, reload: load, handleCambiarEstado, handleEditarCaso, handleEliminarHito, handleDesvincularIncidente };
 }
