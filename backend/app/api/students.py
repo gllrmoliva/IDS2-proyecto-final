@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.database.models import Curso 
-from app.crud.curricular import get_student_by_id, get_students, get_courses
+from app.crud.curricular import get_courses_by_teacher, get_student_by_id, get_students, get_courses, get_courses_by_teacher
 from app.database.database import get_db
 from app.api.deps import RoleChecker
 
@@ -61,3 +61,14 @@ async def get_cases_for_student(
 
     # Obtener casos (El CRUD ya no necesita validar el id_pj)
     return await get_cases_for_user(db, user, id_estudiante)
+
+
+
+@router.get("/courses/me")
+async def get_current_curso(
+    user: Annotated[
+        dict, Depends(RoleChecker(allowed_roles=["profesor_jefe"]))
+    ],
+    db: AsyncSession = Depends(get_db)
+):
+    return await get_courses_by_teacher(db, user, user.id_usuario)
