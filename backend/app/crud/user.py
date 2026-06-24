@@ -34,7 +34,6 @@ async def create_user(db: AsyncSession, user: UsuarioCreate):
     await db.refresh(db_user)
     return db_user
 
-
 async def authenticate_user(db: AsyncSession, email: str, password: str):
     """Validamos credenciales de usuario con index de correo."""
     user = await get_user_by_email(db, email=email)
