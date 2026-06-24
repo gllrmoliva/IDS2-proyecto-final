@@ -263,28 +263,62 @@ export function CaseDetailView() {
   // Generación de reporte PDF del caso.
   // (GET /api/reports/cases/{id}/pdf) 
   // descargará el PDF renderizado
-  const handleGenerarReporte = async () => {
-    setGenerandoReporte(true);
-    try {
-      const token = localStorage.getItem("access_token");
-      const res = await fetch(`/api/reports/cases/${caso._id_caso}/pdf`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error(`El servicio de reportes aún no está disponible (${res.status}).`);
-      // Cuando el endpoint exista, descarga el blob:
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `reporte_${caso.id}.pdf`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch (e) {
-      alert(`No se pudo generar el reporte: ${e.message}`);
-    } finally {
-      setGenerandoReporte(false);
-    }
-  };
+//  const handleGenerarReporte = async () => {
+//    setGenerandoReporte(true);
+//    try {
+//      const token = localStorage.getItem("access_token");
+//      const res = await fetch(`/api/reports/cases/${caso._id_caso}/pdf`, {
+//        headers: { Authorization: `Bearer ${token}` },
+//      });
+//      if (!res.ok) throw new Error(`El servicio de reportes aún no está disponible (${res.status}).`);
+//      // Cuando el endpoint exista, descarga el blob:
+//      const blob = await res.blob();
+//      const url = URL.createObjectURL(blob);
+//      const a = document.createElement("a");
+//      a.href = url;
+//      a.download = `reporte_${caso.id}.pdf`;
+//      a.click();
+//      URL.revokeObjectURL(url);
+//    } catch (e) {
+//      alert(`No se pudo generar el reporte: ${e.message}`);
+//    } finally {
+//      setGenerandoReporte(false);
+//    }
+//  };
+    const handleGenerarReporte = async () => {
+        setGenerandoReporte(true);
+        try {
+            const token = localStorage.getItem("access_token");
+
+            // 1. Corregimos la URL para que coincida con @router.get("/case/{id_caso}")
+            // Asegúrate de que el prefijo "/api/reports" coincida con tu configuración de FastAPI
+            const res = await fetch(`/api/reports/case/${caso._id_caso}`, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+
+            // 2. Mejoramos el manejo de errores para capturar los mensajes de FastAPI
+            if (!res.ok) {
+                // Intentamos obtener el detalle del error desde el backend (ej. si falla el RoleChecker)
+                const errorData = await res.json().catch(() => ({})); 
+                throw new Error(errorData.detail || `El servicio de reportes falló (${res.status}).`);
+            }
+
+            const blob = await res.blob();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+
+            // 3. Consistencia en el nombre del archivo usando _id_caso
+            a.download = `reporte_${caso._id_caso}.pdf`; 
+            a.click();
+            URL.revokeObjectURL(url);
+
+        } catch (e) {
+            alert(`No se pudo generar el reporte: ${e.message}`);
+        } finally {
+            setGenerandoReporte(false);
+        }
+    };
 
   // Estado del modal de edición del caso
   const [editando, setEditando] = useState(false);

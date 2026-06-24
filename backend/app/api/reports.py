@@ -7,9 +7,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Annotated
 
 from app.crud.cases import (
-        get_cases_for_user
+        get_cases_for_user,
+        get_caso_by_id
 )
-
 
 
 router = APIRouter(prefix="/reports", tags=["Controlador de reportes"])
@@ -24,28 +24,11 @@ async def create_report_case(
             dict, Depends(RoleChecker(allowed_roles=["coordinador", ]))
             ],
         db: AsyncSession = Depends(get_db)):
-    datos_prueba = {
-        "id_caso": 1,
-        "id_coordinador": "11111111-1",
-        "estado": "abierto",
-        "fecha_inicio": "2026-05-10",
-        "fecha_cierre": None,
-        "desc": "Problemas reiterados de convivencia en sala.",
-        "gravedad": "grave",
-        "categoria": "disrupcion_desacato",
-        "estudiantes": [
-            {"rol": "autor_agresor", "estudiante": {"id_estudiante": "1000000-1", "nombre": "Juan Pérez", "id_curso": 1, "nombre_curso": "1 Medio A"}},
-            {"rol": "complice", "estudiante": {"id_estudiante": "1000001-2", "nombre": "Pedro Gómez", "id_curso": 2, "nombre_curso": "1 Medio B"}},
-            {"rol": "testigo_espectador", "estudiante": {"id_estudiante": "1000003-3", "nombre": "Diego López", "id_curso": 1, "nombre_curso": "1 Medio A"}}
-        ],
-        "hitos": [
-            {"id_hito": 1, "id_caso": 1, "tipo": "tramite", "nivel_medida": None, "categoria_tramite": "comunicacion_citaciones", "subtipo_tramite": "entrevista_apoderado", "desc": "Entrevista inicial con apoderados de Juanito.", "fecha": "2026-05-12", "estudiantes": [{"id_estudiante": "1000000-1", "nombre": "Juan Pérez", "id_curso": 1, "nombre_curso": "1 Medio A"}], "documentos": [{"nombre_original": "acta_entrevista.pdf"}]},
-            {"id_hito": 12, "id_caso": 1, "tipo": "medida", "nivel_medida": "cautelar", "categoria_tramite": None, "subtipo_tramite": None, "desc": "Aplicación de medida disciplinaria", "fecha": "2026-06-05", "estudiantes": [{"id_estudiante": "1000000-1", "nombre": "Juan Pérez"}], "documentos": []}
-        ]
-    }
+
+    datos = await get_caso_by_id(db=db, id_caso=id_caso, user = current_user)
 
     template = env.get_template("reporte_caso.html")
-    html_renderizado = template.render(caso=datos_prueba)
+    html_renderizado = template.render(caso=datos)
     
     pdf_bytes = HTML(string=html_renderizado).write_pdf()
     
