@@ -409,8 +409,7 @@ class Hito(Base):
     estudiantes: Mapped[List["Estudiante"]] = relationship(
         secondary=estudiante_hito, back_populates="hitos"
     )
-    documentos: Mapped[List["Documento"]] = relationship()
-
+    documentos: Mapped[List["Documento"]] = relationship(cascade="all, delete-orphan")
 class Incidente(Base):
     __tablename__ = "Incidente"
 

@@ -1,5 +1,6 @@
 // IncidentDetailModal.jsx
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { useCases } from "../../hooks/useCases";
 
 const LABEL_CATEGORIA = {
@@ -151,6 +152,17 @@ function EvidenciaLinks({ documentos }) {
 }
 
 export function IncidentDetailModal({ incident, onClose, onAprobar, onRechazar, onRevertir, onElevar }) {
+  // El rol no viaja en el token (solo el email), así que lo pedimos al backend.
+  // Se usa para decidir si mostramos el enlace al caso vinculado (solo coordinador).
+  const [rol, setRol] = useState(null);
+  useEffect(() => {
+    const token = localStorage.getItem("access_token");
+    if (!token) return;
+    fetch("/api/auth/users/me/", { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data) setRol(data.tipo_usuario); })
+      .catch(() => {});
+  }, []);
   if (!incident) return null;
 
   const [paso, setPaso] = useState("detalle");
@@ -277,6 +289,39 @@ export function IncidentDetailModal({ incident, onClose, onAprobar, onRechazar, 
                   </ul>
                 </Section>
               )}
+              {/* Caso vinculado, solo para coordinador */}
+              {rol === "coordinador" && incident._id_caso && (
+                <Link
+                  to={`/cases/CASO-${String(incident._id_caso).padStart(3, "0")}`}
+                  onClick={onClose}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: "12px",
+                    padding: "16px 20px",
+                    borderRadius: "14px",
+                    border: "2px solid #1e3a7a",
+                    background: "#eff4ff",
+                    textDecoration: "none",
+                    transition: "all 0.15s",
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.background = "#dbe6ff"; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = "#eff4ff"; }}
+                >
+                  <div>
+                    <p style={{ fontSize: "11px", fontWeight: "700", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em", margin: "0 0 4px 0" }}>
+                      Caso vinculado
+                    </p>
+                    <p style={{ fontSize: "24px", fontWeight: "800", color: "#1e3a7a", margin: 0 }}>
+                      {`CASO-${String(incident._id_caso).padStart(3, "0")}`}
+                    </p>
+                  </div>
+                  <span style={{ fontSize: "18px", fontWeight: "700", color: "#1e3a7a", whiteSpace: "nowrap" }}>
+                    Ver caso →
+                  </span>
+                </Link>
+              )}
               <Section title="ℹInformación del reporte">
                 <DataRow label="Fecha"         value={formatFecha(incident.fecha)} />
                 <DataRow label="Reportado por" value={incident.reportadoPor} />
@@ -307,7 +352,7 @@ export function IncidentDetailModal({ incident, onClose, onAprobar, onRechazar, 
                   <textarea
                     value={razonRechazo}
                     onChange={(e) => { setRazonRechazo(e.target.value); setRazonError(false); }}
-                    placeholder="Explica por qué se rechaza este incidente…"
+                    placeholder="Explica por qué se rechaza este incidente"
                     rows={4}
                     autoFocus
                     style={{
@@ -340,7 +385,13 @@ export function IncidentDetailModal({ incident, onClose, onAprobar, onRechazar, 
             )}
 
             <div className="p-6 border-t border-gray-100 flex gap-3 justify-end">
-              {isPendiente ? (
+              {rol !== "coordinador" ? (
+                /* Productores y profesores jefe solo pueden cerrar el detalle */
+                <button onClick={onClose}
+                  className="px-5 py-2.5 rounded-xl border-2 border-gray-300 text-gray-600 font-bold text-sm hover:bg-gray-50 transition-colors">
+                  Cerrar
+                </button>
+              ) : isPendiente ? (
                 <>
                   {!showRechazarForm ? (
                     <>
@@ -382,10 +433,12 @@ export function IncidentDetailModal({ incident, onClose, onAprobar, onRechazar, 
                         }
                       </div>
                       <div className="flex gap-3 justify-end">
-                        <button onClick={handleEditarDecision}
-                          className="px-5 py-2.5 rounded-xl border-2 border-gray-400 text-gray-600 font-bold text-sm hover:bg-gray-50 transition-colors">
-                          Deshacer decisión
-                        </button>
+                        {incident.estado === "rechazado" && (
+                          <button onClick={handleEditarDecision}
+                            className="px-5 py-2.5 rounded-xl border-2 border-gray-400 text-gray-600 font-bold text-sm hover:bg-gray-50 transition-colors">
+                            Deshacer decisión
+                          </button>
+                        )}
                         <button onClick={onClose}
                           className="px-5 py-2.5 rounded-xl border-2 border-gray-300 text-gray-600 font-bold text-sm hover:bg-gray-50 transition-colors">
                           Cerrar
@@ -563,11 +616,11 @@ function ModalHeader({ incident, onClose }) {
     <div className="flex items-start justify-between p-6 border-b-2 border-yellow-500">
       <div>
         <p className="text-xs font-bold text-blue-900 tracking-widest uppercase mb-1">{incident.id}</p>
-        <h2 className="text-xl font-bold text-blue-900">{incident.tipo}</h2>
+        <h2 className="text-xl font-bold text-blue-900">{labelCategoria(incident.categoria ?? incident.tipo)}</h2>
       </div>
       <button onClick={onClose}
-        className="ml-4 w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 text-lg transition-colors">
-        ✕
+        className="ml-4 px-4 py-2 flex items-center justify-center rounded-xl border-2 border-gray-300 text-gray-600 font-bold text-sm hover:bg-gray-50 transition-colors">
+        Cerrar
       </button>
     </div>
   );
