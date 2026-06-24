@@ -13,14 +13,38 @@ export function StudentProfileView() {
   const { activeProfile: estudiante, loading, error, fetchStudentProfile } = useStudents();
   const { incidents, handleAprobar, handleRechazar, handleRevertir, handleElevar } = useIncidents();
 
-  // Modal State
+  // Modal & Report State
   const [selectedIncident, setSelectedIncident] = useState(null);
+  const [generandoReporte, setGenerandoReporte] = useState(false);
 
   useEffect(() => {
     if (id) fetchStudentProfile(id);
   }, [id, fetchStudentProfile]);
 
-  // Filtrar incidentes donde el estudiante sea autor principal o parte de los involucrados
+  // Lógica de descarga de reporte de estudiante
+  const handleGenerarReporte = async () => {
+    setGenerandoReporte(true);
+    try {
+      const token = localStorage.getItem("access_token");
+      const res = await fetch(`/api/reports/student/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error(`El servicio de reportes aún no está disponible (${res.status}).`);
+      
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `reporte_estudiante_${id}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      alert(`No se pudo generar el reporte: ${e.message}`);
+    } finally {
+      setGenerandoReporte(false);
+    }
+  };
+
   const studentIncidents = incidents.filter(inc => 
     inc.alumno.rut === id || inc.involucrados?.some(inv => inv.rut === id)
   );
@@ -37,15 +61,25 @@ export function StudentProfileView() {
       
       <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-200">
         
-        {/* Encabezado del Perfil */}
+        {/* Encabezado del Perfil con Botón de Reporte */}
         <div className="flex justify-between items-start border-b pb-6 mb-6">
           <div>
             <h2 className="text-3xl font-bold text-blue-900 font-serif">{estudiante.nombre}</h2>
             <p className="text-gray-500 font-medium mt-1">RUT: {estudiante.rut} | {estudiante.curso}</p>
           </div>
+          <button
+            onClick={handleGenerarReporte}
+            disabled={generandoReporte}
+            className={`flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl border-2 font-semibold text-sm transition-colors ${
+              generandoReporte
+                ? "border-gray-300 text-gray-400 cursor-not-allowed bg-gray-50"
+                : "bg-[#a67c00] border-[#a67c00] text-white hover:bg-[#8a6800]"
+            }`}
+          >
+            {generandoReporte ? "Generando…" : "Generar reporte"}
+          </button>
         </div>
 
-        {/* Indicadores Académicos (Placeholders) */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
           <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
             <p className="text-sm text-gray-500 font-medium">Promedio General</p>
@@ -59,7 +93,6 @@ export function StudentProfileView() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           
-          {/* Columna Izquierda: Casos Disciplinarios */}
           <div>
             <h3 className="text-xl font-bold text-gray-800 mb-4">Historial de Casos</h3>
             {estudiante.historialCasos.length === 0 ? (
@@ -97,7 +130,6 @@ export function StudentProfileView() {
             )}
           </div>
 
-          {/* Columna Derecha: Incidentes (Nivel 1) */}
           <div>
             <h3 className="text-xl font-bold text-gray-800 mb-4">Incidentes Aislados</h3>
             {studentIncidents.length === 0 ? (
@@ -139,7 +171,6 @@ export function StudentProfileView() {
         </div>
       </div>
 
-      {/* Renderizamos el Modal de Detalles de Incidente globalmente si hay uno seleccionado */}
       {selectedIncident && (
         <IncidentDetailModal 
           incident={selectedIncident} 
