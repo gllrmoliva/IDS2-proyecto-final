@@ -11,6 +11,7 @@ from app.schemas.token import Token
 from app.crud.user import authenticate_user
 from app.database.database import get_db
 from app.core.config import settings
+from app.api.deps import RoleChecker
 
 router = APIRouter(tags=["Controlador de autenticación"])
 ACCESS_TOKEN_EXPIRE_MINUTES = settings.ACCESS_TOKEN_EXPIRE_MINUTES
@@ -44,3 +45,5 @@ async def read_users_me(
     current_user: Annotated[UsuarioResponse, Depends(get_current_active_user)],
 ):
     return current_user
+
+
