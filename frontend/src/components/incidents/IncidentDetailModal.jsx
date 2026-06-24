@@ -382,10 +382,12 @@ export function IncidentDetailModal({ incident, onClose, onAprobar, onRechazar, 
                         }
                       </div>
                       <div className="flex gap-3 justify-end">
-                        <button onClick={handleEditarDecision}
-                          className="px-5 py-2.5 rounded-xl border-2 border-gray-400 text-gray-600 font-bold text-sm hover:bg-gray-50 transition-colors">
-                          Deshacer decisión
-                        </button>
+                        {incident.estado === "rechazado" && (
+                          <button onClick={handleEditarDecision}
+                            className="px-5 py-2.5 rounded-xl border-2 border-gray-400 text-gray-600 font-bold text-sm hover:bg-gray-50 transition-colors">
+                            Deshacer decisión
+                          </button>
+                        )}
                         <button onClick={onClose}
                           className="px-5 py-2.5 rounded-xl border-2 border-gray-300 text-gray-600 font-bold text-sm hover:bg-gray-50 transition-colors">
                           Cerrar
