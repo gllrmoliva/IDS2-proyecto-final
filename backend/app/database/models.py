@@ -356,6 +356,7 @@ class Caso(Base):
         foreign_keys="[Incidente.id_caso]",
         back_populates="caso"
     )
+    es_activo: Mapped[bool] = mapped_column(Boolean, server_default="true")
 
 
 class Hito(Base):
@@ -383,6 +384,7 @@ class Hito(Base):
     subtipo_tramite: Mapped[Optional[SubtipoTramite]] = mapped_column(
         Enum(SubtipoTramite, name="subtipo_tramite", create_type=True)
     )
+    es_activo: Mapped[bool] = mapped_column(Boolean, server_default="true")
 
     desc: Mapped[str] = mapped_column(Text, nullable=False)
     fecha: Mapped[date] = mapped_column(Date, nullable=False)
@@ -464,6 +466,7 @@ class Incidente(Base):
     productor: Mapped["Usuario"] = relationship("Usuario")
     
     caso: Mapped[Optional["Caso"]] = relationship("Caso", back_populates="incidentes")
+    es_activo: Mapped[bool] = mapped_column(Boolean, server_default="true")
 
 
 class Documento(Base):
