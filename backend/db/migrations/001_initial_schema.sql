@@ -123,7 +123,8 @@ CREATE TABLE "Caso" (
   "fecha_cierre" date,
   "desc" text NOT NULL,
   "gravedad" gravedad NOT NULL,
-  "categoria" categoria_convivencia NOT NULL
+  "categoria" categoria_convivencia NOT NULL,
+  "es_activo" boolean DEFAULT true,
 );
 
 CREATE TABLE "Hito" (
@@ -137,6 +138,7 @@ CREATE TABLE "Hito" (
   
   "desc" text NOT NULL,
   "fecha" date NOT NULL,
+  "es_activo" boolean DEFAULT true,
   
   -- Exclusividad mutua entre Medida y Trámite
   CONSTRAINT "chk_hito_tipo_exclusivo" 
@@ -166,6 +168,8 @@ CREATE TABLE "Incidente" (
   "estado" estado_incidente NOT NULL,
   "motivo_rechazo" text,
   "categoria" categoria_convivencia NOT NULL,
+  "es_activo" boolean DEFAULT true,
+
   CONSTRAINT "estado_incidente_1"
   CHECK (estado = 'aceptado'::estado_incidente OR id_caso is NULL),
   CONSTRAINT "estado_incidente_2"

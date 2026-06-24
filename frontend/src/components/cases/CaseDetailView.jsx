@@ -125,9 +125,28 @@ function DocLinks({ documentos }) {
 // Modal de detalle
 // muestra el detalle de un incidente o hito al hacer click sobre ellos. se diferencian por color hitos azules y
 //incidentes burdeo
-function EventoModal({ evento, onClose }) {
+function EventoModal({ evento, onClose, onEliminarHito, onDesvincularIncidente }) {
   if (!evento) return null;
   const esIncidente = evento._tipo_evento === "incidente";
+// Estado local para la confirmación y el spinner de la acción destructiva
+  const [confirmando, setConfirmando] = useState(false);
+  const [ejecutando, setEjecutando]   = useState(false);
+
+  const handleAccionDestructiva = async () => {
+    setEjecutando(true);
+    try {
+      if (esIncidente) {
+        await onDesvincularIncidente(evento._id_incidente);
+      } else {
+        await onEliminarHito(evento.id_hito);
+      }
+      onClose();
+    } catch (e) {
+      alert(`Error: ${e.message}`);
+      setEjecutando(false);
+      setConfirmando(false);
+    }
+  };
 
   return (
     <div
@@ -234,6 +253,55 @@ function EventoModal({ evento, onClose }) {
             </>
           )}
         </div>
+        {/* ── Zona de acción destructiva ────────────────────────────────────
+            Primero muestra el botón rojo. Al hacer click pide confirmación
+            inline. Solo entonces el botón ejecuta la acción real.          */}
+        <div className="p-5 border-t border-gray-100">
+          {!confirmando ? (
+            <button
+              onClick={() => setConfirmando(true)}
+              className={`w-full px-4 py-2.5 rounded-xl border-2 font-semibold text-sm transition-colors ${
+                esIncidente
+                  ? "border-amber-600 text-amber-700 hover:bg-amber-50"
+                  : "border-red-700 text-red-700 hover:bg-red-50"
+              }`}
+            >
+              {esIncidente ? "Desvincular incidente del caso" : "Eliminar hito"}
+            </button>
+          ) : (
+            <div className={`rounded-xl border-2 p-4 flex flex-col gap-3 ${
+              esIncidente ? "border-amber-500 bg-amber-50" : "border-red-500 bg-red-50"
+            }`}>
+              <p className="text-sm font-semibold text-gray-800">
+                {esIncidente
+                  ? "¿Desvincular este incidente? Quedará como pendiente y podrá reasignarse."
+                  : "¿Eliminar este hito? Esta acción no se puede deshacer."}
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setConfirmando(false)}
+                  disabled={ejecutando}
+                  className="flex-1 px-4 py-2 rounded-lg border-2 border-gray-300 text-gray-600 font-bold text-sm hover:bg-white transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleAccionDestructiva}
+                  disabled={ejecutando}
+                  className={`flex-1 px-4 py-2 rounded-lg text-white font-bold text-sm transition-colors ${
+                    ejecutando
+                      ? "bg-gray-400 cursor-not-allowed"
+                      : esIncidente
+                        ? "bg-amber-600 hover:bg-amber-700"
+                        : "bg-red-700 hover:bg-red-800"
+                  }`}
+                >
+                  {ejecutando ? "Procesando…" : "Confirmar"}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -252,7 +320,7 @@ function InfoRow({ label, value }) {
 // Vista principal
 export function CaseDetailView() {
   const { id } = useParams(); // id
-  const { cases, loading: loadingCases, error: errorCases, reload, handleEditarCaso } = useCases(); // Datos del casp y sus hitos
+  const { cases, loading: loadingCases, error: errorCases, reload, handleEditarCaso, handleEliminarHito, handleDesvincularIncidente } = useCases(); // Datos del casp y sus hitos
   const { incidents, loading: loadingInc } = useIncidents();// Incidentes
   const [eventoSeleccionado, setEventoSeleccionado] = useState(null);
   const [generandoReporte, setGenerandoReporte] = useState(false);
@@ -537,7 +605,15 @@ export function CaseDetailView() {
       </div>
 
       {eventoSeleccionado && (
-        <EventoModal evento={eventoSeleccionado} onClose={() => setEventoSeleccionado(null)} />
+        <EventoModal evento={eventoSeleccionado} onClose={() => setEventoSeleccionado(null)}
+        onEliminarHito={async (idHito) => {
+            await handleEliminarHito(caso.id, idHito);
+            reload(); // refresca la línea de tiempo
+          }}
+          onDesvincularIncidente={async (idIncidente) => {
+            await handleDesvincularIncidente(caso.id, idIncidente);
+            reload(); // refresca incidentes
+          }} />
       )}
 
       {/* Modal edición de caso */}

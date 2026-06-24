@@ -39,6 +39,7 @@ function mapIncident(inc) {
       rut:    primerEstudiante?.id_estudiante ?? "—",
     },
     involucrados: (inc.estudiantes ?? []).map(e => ({
+      rut: e.estudiante.id_estudiante,
       nombre: e.estudiante.nombre,
       rol:    e.rol ?? "Estudiante", 
     })),

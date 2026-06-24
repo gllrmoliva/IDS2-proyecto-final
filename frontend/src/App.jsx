@@ -8,6 +8,8 @@ import { CreateCasePage } from "./pages/CreateCasePage";
 import LoginPage from "./pages/LoginPage";
 import { CaseDetailPage } from "./pages/CaseDetailPage";
 import { CreateHitoPage } from "./pages/CreateHitoPage"; 
+import { StudentsPage } from "./pages/StudentsPage";
+import { StudentProfilePage } from "./pages/StudentProfilePage";
 
 // Auth Guard Component
 const ProtectedRoute = () => {
@@ -39,6 +41,8 @@ function App() {
             <Route path="/cases/new"            element={<CreateCasePage />} />
             <Route path="/cases/:id"              element={<CaseDetailPage />} />
             <Route path="/cases/:id/nuevo-hito"   element={<CreateHitoPage />} />
+            <Route path="/students" element={<StudentsPage />} />
+            <Route path="/students/:id" element={<StudentProfilePage />} />
           </Route>
         </Route>
       </Routes>

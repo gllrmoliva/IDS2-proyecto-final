@@ -82,6 +82,19 @@ export function MainLayout() {
           Casos
         </NavLink>
 
+        <NavLink to="/students" style={({ isActive }) => ({
+          color: isActive ? "white" : "rgba(255,255,255,0.6)",
+          fontWeight: isActive ? "700" : "500",
+          fontSize: "14px",
+          padding: "6px 14px",
+          borderRadius: "8px",
+          background: isActive ? "rgba(255,255,255,0.15)" : "transparent",
+          textDecoration: "none",
+          transition: "all 0.15s",
+        })}>
+          Estudiantes
+        </NavLink>
+
         {/* Contenedor Flex para Identidad + Botón */}
         <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: "16px" }}>
           
