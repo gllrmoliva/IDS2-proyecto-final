@@ -4,6 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useStudents } from '../../hooks/useStudents';
 import { useIncidents } from '../../hooks/useIncidents';
 import { IncidentDetailModal } from '../incidents/IncidentDetailModal';
+import { EstadoCasoBadge, GravedadCasoBadge } from '../cases/CaseBadges';
 
 export function StudentProfileView() {
   const { id } = useParams(); 
@@ -16,6 +17,17 @@ export function StudentProfileView() {
   // Modal & Report State
   const [selectedIncident, setSelectedIncident] = useState(null);
   const [generandoReporte, setGenerandoReporte] = useState(false);
+  const [rol, setRol] = useState(null);
+
+  // generar reporte es solo del coordinador
+  useEffect(() => {
+    const token = localStorage.getItem("access_token");
+    if (!token) return;
+    fetch("/api/auth/users/me/", { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data) setRol(data.tipo_usuario); })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (id) fetchStudentProfile(id);
@@ -76,17 +88,20 @@ export function StudentProfileView() {
             <h2 className="text-3xl font-bold text-blue-900 font-serif">{estudiante.nombre}</h2>
             <p className="text-gray-500 font-medium mt-1">RUT: {estudiante.rut} | {estudiante.curso}</p>
           </div>
-          <button
-            onClick={handleGenerarReporte}
-            disabled={generandoReporte}
-            className={`flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl border-2 font-semibold text-sm transition-colors ${
-              generandoReporte
-                ? "border-gray-300 text-gray-400 cursor-not-allowed bg-gray-50"
-                : "bg-[#a67c00] border-[#a67c00] text-white hover:bg-[#8a6800]"
-            }`}
-          >
-            {generandoReporte ? "Generando…" : "Generar reporte"}
-          </button>
+          {/* Generar reporte solo coordinador (el backend restringe /reports a coordinador) */}
+          {rol === "coordinador" && (
+            <button
+              onClick={handleGenerarReporte}
+              disabled={generandoReporte}
+              className={`flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl border-2 font-semibold text-sm transition-colors ${
+                generandoReporte
+                  ? "border-gray-300 text-gray-400 cursor-not-allowed bg-gray-50"
+                  : "bg-[#a67c00] border-[#a67c00] text-white hover:bg-[#8a6800]"
+              }`}
+            >
+              {generandoReporte ? "Generando…" : "Generar reporte"}
+            </button>
+          )}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
@@ -119,20 +134,12 @@ export function StudentProfileView() {
                     <div className="flex justify-between items-center mb-2">
                       <span className="text-sm text-gray-500 font-medium font-mono">{caso.id}</span>
                       <div className="flex gap-2">
-                        <span className="px-2.5 py-1 text-xs font-semibold rounded-md uppercase bg-gray-100 text-gray-700">
-                          {caso.estado}
-                        </span>
-                        <span className={`px-2.5 py-1 text-xs font-semibold rounded-md uppercase ${
-                          caso.gravedad === 'muy_grave' ? 'bg-red-100 text-red-700' :
-                          caso.gravedad === 'grave' ? 'bg-orange-100 text-orange-700' :
-                          'bg-blue-100 text-blue-700'
-                        }`}>
-                          {caso.gravedad.replace('_', ' ')}
-                        </span>
+                        <EstadoCasoBadge estado={caso.estado} />
+                        <GravedadCasoBadge gravedad={caso.gravedad} />
                       </div>
                     </div>
                     <p className="text-gray-700 text-sm mt-2">{caso.descripcion}</p>
-                    <p className="text-xs text-gray-400 mt-3">Iniciado: {caso.fecha}</p>
+                    <p className="text-xs text-gray-500 mt-3">Iniciado: {caso.fecha}</p>
                   </div>
                 ))}
               </div>
@@ -168,7 +175,7 @@ export function StudentProfileView() {
                     <p className="text-gray-800 font-medium text-sm mt-1">{inc.tipo}</p>
                     <p className="text-gray-600 text-sm mt-1 line-clamp-2">{inc.descripcion}</p>
                     <div className="flex justify-between items-center mt-3">
-                      <p className="text-xs text-gray-400">{inc.fecha}</p>
+                      <p className="text-xs text-gray-500">{inc.fecha}</p>
                       <p className="text-xs font-medium text-gray-500">Por: {inc.reportadoPor}</p>
                     </div>
                   </div>

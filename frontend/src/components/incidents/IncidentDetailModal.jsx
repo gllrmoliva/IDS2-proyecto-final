@@ -153,7 +153,7 @@ function EvidenciaLinks({ documentos }) {
 
 export function IncidentDetailModal({ incident, onClose, onAprobar, onRechazar, onRevertir, onElevar }) {
   // El rol no viaja en el token (solo el email), así que lo pedimos al backend.
-  // Se usa para decidir si mostramos el enlace al caso vinculado (solo coordinador).
+  // Se usa para decidir si mostramos el enlace al caso vinculado 
   const [rol, setRol] = useState(null);
   useEffect(() => {
     const token = localStorage.getItem("access_token");
