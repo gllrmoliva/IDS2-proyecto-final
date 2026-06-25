@@ -1,3 +1,13 @@
+DROP TYPE IF EXISTS "estado_caso" CASCADE;
+DROP TYPE IF EXISTS "estado_incidente" CASCADE;
+DROP TYPE IF EXISTS "gravedad" CASCADE;
+DROP TYPE IF EXISTS "tipo_hito" CASCADE;
+DROP TYPE IF EXISTS "nivel_medida" CASCADE;
+DROP TYPE IF EXISTS "rol_involucrado" CASCADE;
+DROP TYPE IF EXISTS "categoria_convivencia" CASCADE;
+DROP TYPE IF EXISTS "categoria_tramite" CASCADE;
+DROP TYPE IF EXISTS "subtipo_tramite" CASCADE;
+
 CREATE TYPE "estado_caso" AS ENUM (
   'abierto',
   'cerrado'
@@ -124,7 +134,7 @@ CREATE TABLE "Caso" (
   "desc" text NOT NULL,
   "gravedad" gravedad NOT NULL,
   "categoria" categoria_convivencia NOT NULL,
-  "es_activo" boolean DEFAULT true,
+  "es_activo" boolean DEFAULT true
 );
 
 CREATE TABLE "Hito" (
