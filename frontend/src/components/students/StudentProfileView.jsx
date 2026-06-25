@@ -34,37 +34,37 @@ export function StudentProfileView() {
   }, [id, fetchStudentProfile]);
 
   // Lógica de descarga de reporte de estudiante
-    const handleGenerarReporte = async () => {
-        setGenerandoReporte(true);
-        try {
-            const token = localStorage.getItem("access_token");
-            const res = await fetch(`/api/reports/student/${id}`, {
-                headers: { Authorization: `Bearer ${token}` },
-            });
+  const handleGenerarReporte = async () => {
+      setGenerandoReporte(true);
+      try {
+          const token = localStorage.getItem("access_token");
+          const res = await fetch(`/api/reports/student/${id}`, {
+              headers: { Authorization: `Bearer ${token}` },
+          });
 
-            // Manejo de errores con opción de leer el detalle del backend
-            if (!res.ok) {
-                const errorData = await res.json().catch(() => ({}));
-                throw new Error(errorData.detail || `El servicio de reportes aún no está disponible (${res.status}).`);
-            }
+          // Manejo de errores con opción de leer el detalle del backend
+          if (!res.ok) {
+              const errorData = await res.json().catch(() => ({}));
+              throw new Error(errorData.detail || `El servicio de reportes aún no está disponible (${res.status}).`);
+          }
 
-            const data = await res.blob();
+          const data = await res.blob();
 
-            const pdfBlob = new Blob([data], { type: 'application/pdf' });
-            const url = URL.createObjectURL(pdfBlob);
+          const pdfBlob = new Blob([data], { type: 'application/pdf' });
+          const url = URL.createObjectURL(pdfBlob);
 
-            window.open(url, '_blank');
+          window.open(url, '_blank');
 
-            setTimeout(() => {
-                URL.revokeObjectURL(url);
-            }, 10000);
+          setTimeout(() => {
+              URL.revokeObjectURL(url);
+          }, 10000);
 
-        } catch (e) {
-            alert(`No se pudo generar el reporte: ${e.message}`);
-        } finally {
-            setGenerandoReporte(false);
-        }
-    };
+      } catch (e) {
+          alert(`No se pudo generar el reporte: ${e.message}`);
+      } finally {
+          setGenerandoReporte(false);
+      }
+  };
 
   const studentIncidents = incidents.filter(inc => 
     inc.alumno.rut === id || inc.involucrados?.some(inv => inv.rut === id)
@@ -88,7 +88,7 @@ export function StudentProfileView() {
             <h2 className="text-3xl font-bold text-blue-900 font-serif">{estudiante.nombre}</h2>
             <p className="text-gray-500 font-medium mt-1">RUT: {estudiante.rut} | {estudiante.curso}</p>
           </div>
-          {/* Generar reporte solo coordinador (el backend restringe /reports a coordinador) */}
+          {/* Generar reporte solo coordinador */}
           {rol === "coordinador" && (
             <button
               onClick={handleGenerarReporte}
@@ -104,16 +104,7 @@ export function StudentProfileView() {
           )}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-          <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
-            <p className="text-sm text-gray-500 font-medium">Promedio General</p>
-            <p className="text-2xl font-bold text-gray-400">{estudiante.promedioGeneral}</p>
-          </div>
-          <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
-            <p className="text-sm text-gray-500 font-medium">Asistencia Anual</p>
-            <p className="text-2xl font-bold text-gray-400">{estudiante.asistencia}</p>
-          </div>
-        </div>
+        {/* NOTA: Sección de Promedio y Asistencia ELIMINADA aquí */}
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           
