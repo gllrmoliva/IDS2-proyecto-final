@@ -345,28 +345,31 @@ export function CaseDetailView() {
   // Generación de reporte PDF del caso.
   // Generación de reporte PDF del caso.
   // descargará el PDF renderizado
-  const handleGenerarReporte = async () => {
-    setGenerandoReporte(true);
-    try {
-      const token = localStorage.getItem("access_token");
-      const res = await fetch(`/api/reports/case/${caso._id_caso}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error(`El servicio de reportes aún no está disponible (${res.status}).`);
-      // Cuando el endpoint exista, descarga el blob:
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `reporte_${caso.id}.pdf`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch (e) {
-      alert(`No se pudo generar el reporte: ${e.message}`);
-    } finally {
-      setGenerandoReporte(false);
-    }
-  };
+   const handleGenerarReporte = async () => {
+        setGenerandoReporte(true);
+        try {
+            const token = localStorage.getItem("access_token");
+            // backend
+            const res = await fetch(`/api/reports/case/${caso._id_caso}`, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            if (!res.ok) {
+                const errorData = await res.json().catch(() => ({})); 
+                throw new Error(errorData.detail || `El servicio de reportes falló (${res.status}).`);
+            }
+            const data = await res.blob();
+            const pdfBlob = new Blob([data], { type: 'application/pdf' });
+            const url = URL.createObjectURL(pdfBlob);
+            window.open(url, '_blank');
+            setTimeout(() => {
+                URL.revokeObjectURL(url);
+            }, 10000);
+        } catch (e) {
+            alert(`No se pudo generar el reporte: ${e.message}`);
+        } finally {
+            setGenerandoReporte(false);
+        }
+    };
 
   // Estado del modal de edición del caso
   const [editando, setEditando] = useState(false);
