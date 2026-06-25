@@ -1,5 +1,6 @@
 // App.jsx
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
+import { useState, useEffect } from "react";
 import { MainLayout } from "./layouts/MainLayout";
 import { IncidentsPage } from "./pages/IncidentsPage";
 import { ReportIncidentPage } from "./pages/ReportIncidentPage";
@@ -23,6 +24,28 @@ const ProtectedRoute = () => {
   return <Outlet />;
 };
 
+// Bloquea las rutas según el rol
+function RoleRoute({ rolesPermitidos }) {
+  const [rol, setRol] = useState(null);
+  const [cargando, setCargando] = useState(true);
+
+  useEffect(() => {
+    const token = localStorage.getItem("access_token");
+    if (!token) { setCargando(false); return; }
+    fetch("/api/auth/users/me/", {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => setRol(data?.tipo_usuario ?? null))
+      .catch(() => {})
+      .finally(() => setCargando(false));
+  }, []);
+
+  if (cargando) return null;
+  if (!rolesPermitidos.includes(rol)) return <Navigate to="/incidents" replace />;
+  return <Outlet />;
+}
+
 function App() {
   return (
     <BrowserRouter>
@@ -37,12 +60,20 @@ function App() {
             <Route index element={<Navigate to="/incidents" replace />} />
             <Route path="/incidents" element={<IncidentsPage />} />
             <Route path="/report" element={<ReportIncidentPage />} />
-            <Route path="/cases" element={<CasesPage />} />
-            <Route path="/cases/new"            element={<CreateCasePage />} />
-            <Route path="/cases/:id"              element={<CaseDetailPage />} />
-            <Route path="/cases/:id/nuevo-hito"   element={<CreateHitoPage />} />
-            <Route path="/students" element={<StudentsPage />} />
-            <Route path="/students/:id" element={<StudentProfilePage />} />
+
+            {/* casos y estudiantes:no productores */}
+            <Route element={<RoleRoute rolesPermitidos={["coordinador", "profesor_jefe"]} />}>
+              <Route path="/cases" element={<CasesPage />} />
+              <Route path="/cases/:id" element={<CaseDetailPage />} />
+              <Route path="/students" element={<StudentsPage />} />
+              <Route path="/students/:id" element={<StudentProfilePage />} />
+            </Route>
+
+            {/* crear/editar caso e hitos: solo coordinador */}
+            <Route element={<RoleRoute rolesPermitidos={["coordinador"]} />}>
+              <Route path="/cases/new" element={<CreateCasePage />} />
+              <Route path="/cases/:id/nuevo-hito" element={<CreateHitoPage />} />
+            </Route>
           </Route>
         </Route>
       </Routes>

@@ -1,6 +1,7 @@
 // src/hooks/useIncidents.js
 import { useState, useEffect, useCallback } from "react";
 import { MOCK_INCIDENTS } from "../data/mockIncidents";
+import { mensajeDeError } from "../utils/ApiErrors";
 
 const USE_MOCK = false;
 
@@ -55,11 +56,10 @@ const fetchFromAPI = async (token) => {
     },
   });
 
-  if (res.status === 401 || res.status === 403) {
-    throw new Error("No autorizado. Su sesión podría haber expirado.");
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(mensajeDeError(err.detail, res.status));
   }
-
-  if (!res.ok) throw new Error(`Error ${res.status}: no se pudo cargar los incidentes`);
   const data = await res.json();
   return data.map(mapIncident);
 };

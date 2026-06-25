@@ -1,6 +1,6 @@
-// src/hooks/useCases.js
 import { useState, useEffect, useCallback } from "react";
 import { MOCK_CASES } from "../data/mockCases";
+import { mensajeDeError } from "../utils/ApiErrors";
 
 const USE_MOCK = false;
 
@@ -31,12 +31,11 @@ const fetchFromAPI = async (token) => {
     },
   });
 
-  if (res.status === 401 || res.status === 403) {
-    throw new Error("No autorizado. Su sesión podría haber expirado.");
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(mensajeDeError(err.detail, res.status));
   }
-  
-  if (!res.ok) throw new Error(`Error ${res.status}: no se pudo cargar los casos`);
-  
+
   const data = await res.json();
   return data.map(mapCase);
 };
@@ -97,13 +96,15 @@ export function useCases() {
   }, []);
 
   const handleCambiarEstado = useCallback(async (id, nuevoEstado) => {
+    const c = cases.find(x => x.id === id);
+    const estadoPrevio = c?.estado;
+
     // 1. Optimistic UI Update (Cambiamos la vista antes de confirmar en el backend)
     updateLocal(id, { estado: nuevoEstado });
-    
+
     if (!USE_MOCK) {
-      const c = cases.find(x => x.id === id);
       const token = localStorage.getItem("access_token");
-      
+
       try {
         const res = await fetch(`/api/operate/cases/${c?._id_caso}`, {
           method: "PATCH",
@@ -113,12 +114,13 @@ export function useCases() {
           },
           body: JSON.stringify({ estado: nuevoEstado }),
         });
-        
+
         if (!res.ok) throw new Error("Error en la respuesta del servidor");
-      } catch (e) { 
-        console.error("Error al cambiar estado:", e); 
-        // Si el servidor falla, se debería revertir el Optimistic Update llamando a:
-        // updateLocal(id, { estado: c.estado });
+      } catch (e) {
+        console.error("Error al cambiar estado:", e);
+        // Si el servidor falla, revertimos el Optimistic Update al estado anterior
+        if (estadoPrevio !== undefined) updateLocal(id, { estado: estadoPrevio });
+        throw e; // dejamos que la vista sepa que falló
       }
     }
   }, [cases, updateLocal]);
