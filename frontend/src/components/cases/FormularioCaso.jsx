@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { BuscadorEstudiante } from '../shared/StudentSearch';
+import { mensajeDeError } from '../../utils/ApiErrors';
 
 // Valores del enum rol_involucrado 
 // null = sin rol 
@@ -136,11 +137,8 @@ export default function FormularioCaso() {
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        const detalleError = Array.isArray(err.detail) 
-          ? JSON.stringify(err.detail, null, 2) 
-          : err.detail;
-        console.error("Detalle del error de validación del Caso:", detalleError);
-        throw new Error(detalleError ?? `Error ${res.status}`);
+        console.error("Detalle del error de validación del Caso:", err.detail);
+        throw new Error(mensajeDeError(err.detail, res.status));
       }
     
 
@@ -154,7 +152,7 @@ export default function FormularioCaso() {
       setArchivos([]);
       setLoading(false);
     } catch (error) {
-      setMensaje({ texto: `Error al conectar con el servidor: ${error.message}`, tipo: 'error' });
+      setMensaje({ texto: error.message, tipo: 'error' });
       setLoading(false);
     }
   };
@@ -263,7 +261,7 @@ export default function FormularioCaso() {
                     {ROLES_INVOLUCRADO.map(r => <option key={r.value ?? 'null'} value={r.value ?? ''}>{r.label}</option>)}
                   </select>
                 </div>
-                <button type="button" onClick={() => quitarEstudiante(index)}
+                <button type="button" onClick={() => quitarEstudiante(index)} aria-label="Quitar estudiante"
                   className="mt-2 text-red-400 hover:text-red-600 font-bold text-lg px-1" title="Quitar">✕</button>
               </div>
             ))}
@@ -303,7 +301,7 @@ export default function FormularioCaso() {
               {archivos.map((archivo, i) => (
                 <li key={i} className="flex items-center justify-between px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700">
                   <span className="truncate max-w-xs">{archivo.name}</span>
-                  <button type="button" onClick={() => quitarArchivo(i)}
+                  <button type="button" onClick={() => quitarArchivo(i)} aria-label="Quitar archivo"
                     className="ml-2 text-red-400 hover:text-red-600 font-bold flex-shrink-0">✕</button>
                 </li>
               ))}
@@ -320,7 +318,7 @@ export default function FormularioCaso() {
             type="submit"
             disabled={loading}
             className={`px-6 py-2.5 rounded-lg text-white font-medium shadow transition ${
-              loading ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 active:scale-95'
+              loading ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-900 hover:bg-blue-800 active:scale-95'
             }`}
           >
             {loading ? 'Creando' : 'Crear Caso'}

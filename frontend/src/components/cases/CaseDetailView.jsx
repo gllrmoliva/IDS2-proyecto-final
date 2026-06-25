@@ -125,7 +125,7 @@ function DocLinks({ documentos }) {
 // Modal de detalle
 // muestra el detalle de un incidente o hito al hacer click sobre ellos. se diferencian por color hitos azules y
 //incidentes burdeo
-function EventoModal({ evento, onClose, onEliminarHito, onDesvincularIncidente }) {
+function EventoModal({ evento, onClose, onEliminarHito, onDesvincularIncidente, rol }) {
   if (!evento) return null;
   const esIncidente = evento._tipo_evento === "incidente";
 // Estado local para la confirmación y el spinner de la acción destructiva
@@ -255,7 +255,9 @@ function EventoModal({ evento, onClose, onEliminarHito, onDesvincularIncidente }
         </div>
         {/* ── Zona de acción destructiva ────────────────────────────────────
             Primero muestra el botón rojo. Al hacer click pide confirmación
-            inline. Solo entonces el botón ejecuta la acción real.          */}
+            inline. Solo entonces el botón ejecuta la acción real.
+            Solo el coordinador puede eliminar hitos o desvincular incidentes. */}
+        {rol === "coordinador" && (
         <div className="p-5 border-t border-gray-100">
           {!confirmando ? (
             <button
@@ -302,6 +304,7 @@ function EventoModal({ evento, onClose, onEliminarHito, onDesvincularIncidente }
             </div>
           )}
         </div>
+        )}
       </div>
     </div>
   );
@@ -324,43 +327,46 @@ export function CaseDetailView() {
   const { incidents, loading: loadingInc } = useIncidents();// Incidentes
   const [eventoSeleccionado, setEventoSeleccionado] = useState(null);
   const [generandoReporte, setGenerandoReporte] = useState(false);
+  const [rol, setRol] = useState(null);
+
+  // editar caso y crear hito son solo del coordinador
+  useEffect(() => {
+    const token = localStorage.getItem("access_token");
+    if (!token) return;
+    fetch("/api/auth/users/me/", { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data) setRol(data.tipo_usuario); })
+      .catch(() => {});
+  }, []);
 
   // Recargar al entrar para tener hitos y documentos actualizados
   useEffect(() => { reload(); }, []);
 
   // Generación de reporte PDF del caso.
-    const handleGenerarReporte = async () => {
-        setGenerandoReporte(true);
-        try {
-            const token = localStorage.getItem("access_token");
-
-            // backend
-            const res = await fetch(`/api/reports/case/${caso._id_caso}`, {
-                headers: { Authorization: `Bearer ${token}` },
-            });
-
-            if (!res.ok) {
-                const errorData = await res.json().catch(() => ({})); 
-                throw new Error(errorData.detail || `El servicio de reportes falló (${res.status}).`);
-            }
-
-            const data = await res.blob();
-
-            const pdfBlob = new Blob([data], { type: 'application/pdf' });
-            const url = URL.createObjectURL(pdfBlob);
-
-            window.open(url, '_blank');
-
-            setTimeout(() => {
-                URL.revokeObjectURL(url);
-            }, 10000);
-
-        } catch (e) {
-            alert(`No se pudo generar el reporte: ${e.message}`);
-        } finally {
-            setGenerandoReporte(false);
-        }
-    };
+  // Generación de reporte PDF del caso.
+  // descargará el PDF renderizado
+  const handleGenerarReporte = async () => {
+    setGenerandoReporte(true);
+    try {
+      const token = localStorage.getItem("access_token");
+      const res = await fetch(`/api/reports/case/${caso._id_caso}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error(`El servicio de reportes aún no está disponible (${res.status}).`);
+      // Cuando el endpoint exista, descarga el blob:
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `reporte_${caso.id}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      alert(`No se pudo generar el reporte: ${e.message}`);
+    } finally {
+      setGenerandoReporte(false);
+    }
+  };
 
   // Estado del modal de edición del caso
   const [editando, setEditando] = useState(false);
@@ -455,30 +461,36 @@ export function CaseDetailView() {
 
           {/* Botones de acción */}
           <div className="flex flex-col gap-2">
-            <button
-              onClick={() => { initEditForm(); setEditando(true); }}
-              className="w-full px-4 py-2.5 rounded-xl border-2 border-blue-900 text-blue-900 font-semibold text-sm hover:bg-blue-50 transition-colors text-center"
-            >
-              Editar caso
-            </button>
-            <Link
-              to={`/cases/${id}/nuevo-hito`}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-blue-900 text-white font-semibold text-sm hover:bg-blue-800 transition-colors text-center"
-            >
-              ＋ Agregar hito
-            </Link>
-            {/* Boton de reporte */}
-            <button
-              onClick={handleGenerarReporte}
-              disabled={generandoReporte}
-              className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border-2 font-semibold text-sm transition-colors text-center ${
-                generandoReporte
-                  ? "border-gray-300 text-gray-400 cursor-not-allowed"
-                  : "bg-[#a67c00] border-[#a67c00] text-white hover:bg-[#8a6800]"
-              }`}
-            >
-              {generandoReporte ? "Generando…" : "Generar reporte"}
-            </button>
+            {rol === "coordinador" && (
+              <>
+                <button
+                  onClick={() => { initEditForm(); setEditando(true); }}
+                  className="w-full px-4 py-2.5 rounded-xl border-2 border-blue-900 text-blue-900 font-semibold text-sm hover:bg-blue-50 transition-colors text-center"
+                >
+                  Editar caso
+                </button>
+                <Link
+                  to={`/cases/${id}/nuevo-hito`}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-blue-900 text-white font-semibold text-sm hover:bg-blue-800 transition-colors text-center"
+                >
+                  ＋ Agregar hito
+                </Link>
+              </>
+            )}
+            {/* Boton de reporte — solo coordinador (el backend restringe /reports a coordinador) */}
+            {rol === "coordinador" && (
+              <button
+                onClick={handleGenerarReporte}
+                disabled={generandoReporte}
+                className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border-2 font-semibold text-sm transition-colors text-center ${
+                  generandoReporte
+                    ? "border-gray-300 text-gray-400 cursor-not-allowed"
+                    : "bg-[#a67c00] border-[#a67c00] text-white hover:bg-[#8a6800]"
+                }`}
+              >
+                {generandoReporte ? "Generando…" : "Generar reporte"}
+              </button>
+            )}
           </div>
 
           {/* Involucrados solo nombres */}
@@ -520,9 +532,11 @@ export function CaseDetailView() {
           {eventosLineaDeTiempo.length === 0 ? (
             <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-10 text-center text-gray-400">
               <p className="font-semibold">No hay eventos registrados aún.</p>
-              <Link to={`/cases/${id}/nuevo-hito`} className="text-blue-600 text-sm hover:underline mt-2 inline-block">
-                Agregar el primer hito
-              </Link>
+              {rol === "coordinador" && (
+                <Link to={`/cases/${id}/nuevo-hito`} className="text-blue-600 text-sm hover:underline mt-2 inline-block">
+                  Agregar el primer hito
+                </Link>
+              )}
             </div>
           ) : (
             <div className="relative">
@@ -579,7 +593,7 @@ export function CaseDetailView() {
       </div>
 
       {eventoSeleccionado && (
-        <EventoModal evento={eventoSeleccionado} onClose={() => setEventoSeleccionado(null)}
+        <EventoModal evento={eventoSeleccionado} onClose={() => setEventoSeleccionado(null)} rol={rol}
         onEliminarHito={async (idHito) => {
             await handleEliminarHito(caso.id, idHito);
             reload(); // refresca la línea de tiempo

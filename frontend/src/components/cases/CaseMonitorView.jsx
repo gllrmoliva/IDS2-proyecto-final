@@ -1,7 +1,7 @@
 // CaseMonitorView.jsx
 // Vista de monitoreo de casos para el coordinador
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useCases } from "../../hooks/useCases";
 import { useIncidents } from "../../hooks/useIncidents";
@@ -17,6 +17,17 @@ export function CaseMonitorView() {
   const { cases, loading, error, reload } = useCases();
   const { incidents } = useIncidents();
   const [filters, setFilters] = useState(CASE_INITIAL_FILTERS);
+  const [rol, setRol] = useState(null);
+
+  // solo el coordinador puede crear casos
+  useEffect(() => {
+    const token = localStorage.getItem("access_token");
+    if (!token) return;
+    fetch("/api/auth/users/me/", { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data) setRol(data.tipo_usuario); })
+      .catch(() => {});
+  }, []);
 
 
   // Filtros, los abiertos van primero
@@ -32,7 +43,7 @@ export function CaseMonitorView() {
       const matchCurso    = filters.curso    === "todos" || c.estudiantes.some(e => e.nombre_curso === filters.curso);
       return matchSearch && matchEstado && matchGravedad && matchCurso;
     }).sort((a, b) => {
-      const orden = { "abierto": 0, "abierto": 1, "cerrado": 2 };
+      const orden = { "abierto": 0, "cerrado": 1 };
       return (orden[a.estado] ?? 9) - (orden[b.estado] ?? 9);
     });
   }, [cases, filters]);
@@ -57,10 +68,12 @@ export function CaseMonitorView() {
           <p className="text-sm text-gray-500 mt-0.5">Colegio San Penquista</p>
         </div>
         <div className="flex gap-3">
-          <Link to="/cases/new"
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-900 text-white font-semibold text-sm hover:bg-blue-800 transition-colors">
-            ＋ Nuevo caso
-          </Link>
+          {rol === "coordinador" && (
+            <Link to="/cases/new"
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-900 text-white font-semibold text-sm hover:bg-blue-800 transition-colors">
+              ＋ Nuevo caso
+            </Link>
+          )}
           <button onClick={reload}
             className="flex items-center gap-2 px-4 py-2 rounded-xl border-2 border-blue-200 text-blue-700 font-semibold text-sm hover:bg-blue-50 transition-colors">
             Actualizar
@@ -84,7 +97,7 @@ export function CaseMonitorView() {
           />
           <CaseFilters filters={filters} onChange={setFilters} />
         </div>
-        <p className="text-xs text-gray-400">
+        <p className="text-xs text-gray-500">
           Mostrando <strong>{filtered.length}</strong> de <strong>{cases.length}</strong> casos
         </p>
       </div>
@@ -122,9 +135,9 @@ export function CaseMonitorView() {
                       {[...c.estudiantes].sort((a,b) =>
                         a.rol === "autor_agresor" ? -1 : b.rol === "autor_agresor" ? 1 : 0
                       ).slice(0,2).map((e,i) => (
-                        <div key={i} className="text-gray-800 font-medium text-xs">{e.nombre} <span className="text-gray-400">({e.nombre_curso})</span></div>
+                        <div key={i} className="text-gray-800 font-medium text-xs">{e.nombre} <span className="text-gray-500">({e.nombre_curso})</span></div>
                       ))}
-                      {c.estudiantes.length > 2 && <div className="text-xs text-gray-400">+{c.estudiantes.length - 2} más</div>}
+                      {c.estudiantes.length > 2 && <div className="text-xs text-gray-500">+{c.estudiantes.length - 2} más</div>}
                     </td>
                     <td className="px-4 py-3 text-gray-700 max-w-xs">
                       <span className="line-clamp-2 text-sm">{c.descripcion}</span>

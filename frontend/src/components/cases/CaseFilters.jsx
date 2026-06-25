@@ -59,7 +59,7 @@ export function CaseFilters({ filters, onChange }) {
           }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #f0f0f0", paddingBottom: "12px" }}>
               <span className="font-bold text-blue-900 text-sm uppercase tracking-wide">Filtros</span>
-              <button onClick={() => setOpen(false)} className="w-7 h-7 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 text-sm">✕</button>
+              <button onClick={() => setOpen(false)} aria-label="Cerrar filtros" className="w-7 h-7 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 text-sm">✕</button>
             </div>
             <div className="flex flex-wrap gap-4 items-end">
               {[["Estado", "estado", CASE_FILTER_OPTIONS.estados], ["Curso", "curso", cursos]].map(([label, key, opts]) => (

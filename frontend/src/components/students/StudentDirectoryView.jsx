@@ -56,7 +56,7 @@ export function StudentDirectoryView() {
 
         <div className="overflow-x-auto border border-gray-200 rounded-lg">
           <table className="min-w-full divide-y divide-gray-200 text-sm">
-            <thead className="bg-gray-50 text-gray-700 font-semibold">
+            <thead className="bg-blue-900 text-white text-xs uppercase tracking-wide font-semibold">
               <tr>
                 <th className="px-4 py-3 text-left">Estudiante</th>
                 <th className="px-4 py-3 text-left">RUT</th>
