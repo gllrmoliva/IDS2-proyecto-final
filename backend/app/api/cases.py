@@ -11,15 +11,17 @@ from app.api.deps import (
         form_to_incident_schema
 )
  
-from app.crud.cases import (
-        get_incidents_for_user,
+from app.crud.cases import ( get_incidents_for_user,
         get_cases_for_user,
         create_incidente_completo,
         create_caso_completo,
         elevar_incidente,
         update_incidente_estado,
         update_caso,
-        create_hito_completo
+        create_hito_completo,
+        soft_delete_caso,
+        soft_delete_incidente,
+        soft_delete_hito
 )
 
 from app.database.minio_client import get_minio_client
@@ -344,4 +346,49 @@ async def update_case(
         raise HTTPException(status_code=409, detail=str(e))
 
 
+#####################
+# ELIMINACIONES
+#####################
+@router.delete("/delete/hito/{id_hito}", status_code=status.HTTP_200_OK)
+async def delete_hito(
+        id_hito: int,
+        current_user: Annotated[
+            dict, Depends(RoleChecker(allowed_roles=["coordinador"]))
+        ],
+        db: AsyncSession = Depends(get_db)
+):
+    """Permite al Coordinador eliminar un hito existente (borrado lógico)."""
+    await soft_delete_hito(db, id_hito)
+    return {"message": f"Hito con ID {id_hito} eliminado exitosamente."}
 
+
+@router.delete("/delete/incidente/{id_incidente}", status_code=status.HTTP_200_OK)
+async def delete_incidente(
+        id_incidente: int,
+        current_user: Annotated[
+            dict, Depends(RoleChecker(allowed_roles=["coordinador"]))
+        ],
+        db: AsyncSession = Depends(get_db)
+):
+    """Permite al Coordinador eliminar un incidente existente (borrado lógico)."""
+    try:
+        await soft_delete_incidente(db, id_incidente)
+    except EntityNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except BusinessLogicError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+
+    return {"message": f"Incidente con ID {id_incidente} eliminado exitosamente."}
+
+
+@router.delete("/delete/case/{id_caso}", status_code=status.HTTP_200_OK)
+async def delete_caso(
+        id_caso: int,
+        current_user: Annotated[
+            dict, Depends(RoleChecker(allowed_roles=["coordinador"]))
+        ],
+        db: AsyncSession = Depends(get_db)
+):
+    """Permite al Coordinador eliminar un caso existente (borrado lógico)."""
+    await soft_delete_caso(db, id_caso)
+    return {"message": f"Caso con ID {id_caso} eliminado exitosamente."}
