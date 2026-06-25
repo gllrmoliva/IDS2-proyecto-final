@@ -30,6 +30,7 @@ async def get_student_by_id(db: AsyncSession, user, id_estudiante):
 
         return result.scalar_one_or_none()
 
+
 async def get_courses_by_teacher(db: AsyncSession, user, id_profesor):
     if user.tipo_usuario in ["coordinador", "productor", "profesor_jefe"]:
         print(user.id_usuario)

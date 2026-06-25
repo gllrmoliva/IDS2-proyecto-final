@@ -1,7 +1,6 @@
-import uuid
 from datetime import datetime, date
 from fastapi import UploadFile
-from typing import List
+from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_
 from sqlalchemy.orm import selectinload, with_loader_criteria
@@ -28,14 +27,10 @@ from app.schemas.cases import (
         IncidentUpdateEstado,
         HitoCreate,
         CasoUpdate,
-        IncidentCreate
 )
 from app.exceptions import EntityNotFoundError, BusinessLogicError
 import uuid
-from datetime import datetime
-from fastapi import UploadFile, HTTPException
 from app.crud.documents import upload_file_minio
-from typing import List, Optional
 
 
 async def get_incidents_for_user(db: AsyncSession, user):
@@ -49,13 +44,19 @@ async def get_incidents_for_user(db: AsyncSession, user):
         .selectinload(Estudiante.curso),
     )
 
+    # únicamente los incidentes activos
+    stmt = stmt.where(Incidente.es_activo == True)
+
     if user.tipo_usuario == "coordinador":
         pass
     elif user.tipo_usuario == "productor":
+        # Se añade al WHERE existente usando AND (implícito en SQLAlchemy encadenados)
         stmt = stmt.where(Incidente.id_productor == user.id_usuario)
     elif user.tipo_usuario == "profesor_jefe":
         # Los JOINs también deben respetar el grafo del Association Object
         stmt = stmt.outerjoin(Incidente.estudiantes).outerjoin(EstudianteIncidente.estudiante).outerjoin(Estudiante.curso)
+        
+        # Filtro de acceso combinado con la regla base de activo
         stmt = stmt.where(
             or_(
                 Incidente.id_productor == user.id_usuario,
@@ -76,16 +77,18 @@ async def get_cases_for_user(db: AsyncSession, user, id_estudiante: Optional[str
         .selectinload(EstudianteCaso.estudiante)
         .selectinload(Estudiante.curso),
         
-        # Cargar hitos del Caso, y dentro de los hitos, cargar documentos Y ESTUDIANTES
-        selectinload(Caso.hitos).options(
+        selectinload(Caso.hitos.and_(Hito.es_activo == True)).options(
             selectinload(Hito.documentos),
             selectinload(Hito.estudiantes)
         ),
     )
 
+    stmt = stmt.where(Caso.es_activo == True)
+
     if id_estudiante:
         stmt = stmt.where(Caso.estudiantes.any(EstudianteCaso.id_estudiante == id_estudiante))
 
+    # Filtros por tipo de usuario
     if user.tipo_usuario == "coordinador":
         pass
     elif user.tipo_usuario == "profesor_jefe":
@@ -653,28 +656,30 @@ async def create_hito_completo(
 
 async def get_caso_by_id(
     db: AsyncSession, id_caso: int, user) -> Caso:
+    
     stmt = select(Caso).options(
         
-        # Estudiantes del caso con su curso
+        # Estudiantes del caso con su curso (estas tablas no tienen es_activo)
         selectinload(Caso.estudiantes)
             .selectinload(EstudianteCaso.estudiante)
             .selectinload(Estudiante.curso),
 
-        # Hitos con sus documentos y estudiantes vinculados
-        selectinload(Caso.hitos).options(
+        selectinload(Caso.hitos.and_(Hito.es_activo == True)).options(
             selectinload(Hito.documentos),
             selectinload(Hito.estudiantes)
         ),
 
-        # Incidentes del caso con productor, documentos y estudiantes
-        selectinload(Caso.incidentes).options(
+        selectinload(Caso.incidentes.and_(Incidente.es_activo == True)).options(
             selectinload(Incidente.productor),
             selectinload(Incidente.documentos),
             selectinload(Incidente.estudiantes)
                 .selectinload(EstudianteIncidente.estudiante)
                 .selectinload(Estudiante.curso)
         ),
-    ).where(Caso.id_caso == id_caso)
+    ).where(
+        Caso.id_caso == id_caso,
+        Caso.es_activo == True
+    )
 
     # Restricciones por rol
     if user.tipo_usuario == "profesor_jefe":
@@ -686,8 +691,12 @@ async def get_caso_by_id(
             )
         )
     elif user.tipo_usuario == "productor":
+        # Ajuste de seguridad: El productor tiene acceso solo si es autor de un incidente ACTIVO
         stmt = stmt.where(
-            Caso.incidentes.any(Incidente.id_productor == user.id_usuario)
+            Caso.incidentes.any(
+                (Incidente.id_productor == user.id_usuario) & 
+                (Incidente.es_activo == True)
+            )
         )
 
     result = await db.execute(stmt)
@@ -760,3 +769,85 @@ async def get_caso_by_id_report(db: AsyncSession, id_caso: int, user) -> Caso:
         raise EntityNotFoundError(f"Caso con ID {id_caso} no encontrado o se encuentra inactivo.")
 
     return caso
+
+
+#
+# BORRADOS DE ELEMENTOS
+#
+async def soft_delete_hito(db: AsyncSession, id_hito: int) -> bool:
+    hito = await db.get(Hito, id_hito)
+    
+    if not hito or not hito.es_activo:
+        raise EntityNotFoundError(f"Hito con ID {id_hito} no encontrado o ya eliminado.")
+    
+    # Aplicamos el borrado lógico
+    hito.es_activo = False
+    await db.commit()
+    
+    return True
+
+
+async def soft_delete_incidente(db: AsyncSession, id_incidente: int) -> bool:
+    # Cargamos el incidente y, si tiene caso, cargamos el caso con sus incidentes
+    stmt = select(Incidente).options(
+        selectinload(Incidente.caso).selectinload(Caso.incidentes)
+    ).where(
+        Incidente.id_incidente == id_incidente,
+        Incidente.es_activo == True
+    )
+    
+    result = await db.execute(stmt)
+    incidente = result.scalars().one_or_none()
+    
+    if not incidente:
+        raise EntityNotFoundError(f"Incidente con ID {id_incidente} no encontrado o ya eliminado.")
+    
+    if incidente.caso and incidente.caso.es_activo:
+        # incidente original (ID mínimo asociado a este caso)
+        # FIXME: puede que no sea del todo así
+        incidente_origen = min(incidente.caso.incidentes, key=lambda x: x.id_incidente)
+        
+        # Si usuario intenta borrar incidente original, levantamos un error
+        if incidente.id_incidente == incidente_origen.id_incidente:
+            raise BusinessLogicError(
+                "No se puede eliminar el incidente que fue elevado a un caso. "
+                "Para anular este registro, se debe eliminar el caso completo."
+            )
+
+    # caso incidente "acumulado"
+    incidente.es_activo = False
+    
+    await db.commit()
+    
+    return True
+
+
+async def soft_delete_caso(db: AsyncSession, id_caso: int) -> bool:
+    stmt = select(Caso).options(
+        selectinload(Caso.hitos),
+        selectinload(Caso.incidentes)
+    ).where(
+        Caso.id_caso == id_caso,
+        Caso.es_activo == True
+    )
+    
+    result = await db.execute(stmt)
+    caso = result.scalars().one_or_none()
+    
+    if not caso:
+        raise EntityNotFoundError(f"Caso con ID {id_caso} no encontrado o ya eliminado.")
+    
+    # desactivar caso
+    caso.es_activo = False
+    
+    # desactivar hitos
+    for hito in caso.hitos:
+        hito.es_activo = False
+        
+    # desactivar incidentes
+    for incidente in caso.incidentes:
+        incidente.es_activo = False
+        
+    await db.commit()
+    
+    return True
