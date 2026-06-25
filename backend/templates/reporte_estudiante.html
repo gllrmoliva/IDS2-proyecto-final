@@ -2,11 +2,11 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Reporte Consolidado de Casos por Estudiante</title>
+    <title>Reporte de {{ datos_alumno.nombre_alumno if datos_alumno.nombre_alumno else 'No Encontrado' }}</title>
     <style>
         @page {
             size: A4 portrait;
-            margin: 2cm;
+            margin: 1cm;
             @bottom-right {
                 content: "Página " counter(page) " de " counter(pages);
                 font-family: Helvetica, sans-serif;
@@ -25,13 +25,15 @@
         .ficha-estudiante { width: 100%; margin-bottom: 30px; border-collapse: collapse; background-color: #f8f9fa; }
         .ficha-estudiante td { padding: 8px 12px; border: 1px solid #ccd1d1; }
         .ficha-estudiante td.label { background-color: #34495e; color: white; font-weight: bold; width: 20%; }
+        /* Contenedor de cada caso fluido */
+        .bloque-caso { margin-bottom: 40px; border: 1px solid #eaeded; padding: 15px; border-radius: 4px; }
 
+        /* Evitar que el título se separe de la tabla resumen */
+        .titulo-caso { color: #c0392b; font-size: 15px; margin-top: 0; padding-bottom: 5px; border-bottom: 2px dashed #c0392b; page-break-after: avoid; }
+
+        /* Cajas de resumen (evitamos que se rompa el cuadro inicial) */
+        .resumen { width: 100%; margin-bottom: 15px; border-collapse: collapse; page-break-inside: avoid; }
         /* Contenedor de cada caso para evitar rupturas feas en PDF */
-        .bloque-caso { page-break-inside: avoid; margin-bottom: 40px; border: 1px solid #eaeded; padding: 15px; border-radius: 4px; }
-        .titulo-caso { color: #c0392b; font-size: 15px; margin-top: 0; padding-bottom: 5px; border-bottom: 2px dashed #c0392b; }
-
-        /* Cajas de resumen */
-        .resumen { width: 100%; margin-bottom: 15px; border-collapse: collapse; }
         .resumen td { padding: 5px 10px; border: 1px solid #ddd; }
         .resumen td.label { background-color: #f4f6f7; font-weight: bold; width: 20%; }
         
@@ -44,12 +46,7 @@
         table.datos thead { display: table-header-group; }
 
         /* Etiquetas visuales */
-        .badge { padding: 3px 6px; border-radius: 3px; font-size: 9px; color: white; font-weight: bold; display: inline-block;}
-        .badge-grave, .badge-muy_grave { background-color: #e74c3c; }
-        .badge-abierto { background-color: #27ae60; }
-        .badge-cerrado { background-color: #7f8c8d; }
-        .badge-tramite { background-color: #3498db; }
-        .badge-medida { background-color: #f39c12; }
+        .badge { padding: 3px 6px; border-radius: 3px; font-size: 9px; color: #333; font-weight: bold; display: inline-block;}
         
         ul.lista-interna { margin: 0; padding-left: 15px; font-size: 10px; }
         .highlight { background-color: #fcf3cf; font-weight: bold; }
@@ -59,45 +56,43 @@
 
     <h1>Reporte de Estudiante</h1>
 
-    {# Buscamos al estudiante en el primer caso de la lista para extraer sus datos generales #}
-    {% set estudiante_principal = none %}
-    {% if casos|length > 0 %}
-        {% for item in casos[0].estudiantes %}
+    {# Buscamos el curso del estudiante mapeando de forma segura desde el primer caso #}
+    {% set curso_estudiante = 'N/A' %}
+    {% if datos_alumno.casos|length > 0 %}
+        {% for item in datos_alumno.casos[0].estudiantes %}
             {% if item.id_estudiante == id_estudiante %}
-                {% set estudiante_principal = item.estudiante %}
+                {% set curso_estudiante = item.estudiante.curso.nombre_curso %}
             {% endif %}
         {% endfor %}
     {% endif %}
 
-    <h2>Antecedentes del Estudiante</h2>
     <table class="ficha-estudiante">
         <tr>
             <td class="label">Nombre Estudiante:</td>
             <td style="font-size: 14px; font-weight: bold;">
-                {{ estudiante_principal.nombre if estudiante_principal else 'No Encontrado' }}
+                {{ datos_alumno.nombre_alumno if datos_alumno.nombre_alumno else 'No Encontrado' }}
             </td>
             <td class="label">RUT / ID:</td>
             <td>{{ id_estudiante }}</td>
         </tr>
         <tr>
             <td class="label">Curso Actual:</td>
-            <td>{{ estudiante_principal.curso.nombre_curso if estudiante_principal else 'N/A' }}</td>
+            <td>{{ datos_alumno.curso_alumno}}</td>
             <td class="label">Total Casos Registrados:</td>
-            <td style="font-weight: bold; color: #c0392b;">{{ casos|length }}</td>
+            <td style="font-weight: bold; color: #c0392b;">{{ datos_alumno.casos|length }}</td>
         </tr>
     </table>
 
-    <h2>Detalle de Casos Asociados</h2>
 
-    {% for caso in casos %}
+    {% for caso in datos_alumno.casos %}
     <div class="bloque-caso">
-        <h3 class="titulo-caso">Caso #{{ caso.id_caso }} — {{ caso.categoria.replace('_', ' ') | title }}</h3>
+        <h3 class="titulo-caso">Caso #{{ caso.id_caso }} - {{ caso.categoria.replace('_', ' ') | title }}</h3>
         
         <table class="resumen">
             <tr>
                 <td class="label">Estado del Caso:</td>
                 <td>
-                    <span class="badge badge-{{ caso.estado }}">
+                    <span class="badge">
                         {{ caso.estado | upper }}
                     </span>
                 </td>
@@ -107,7 +102,7 @@
             <tr>
                 <td class="label">Gravedad:</td>
                 <td>
-                    <span class="badge badge-{{ caso.gravedad }}">
+                    <span class="badge">
                         {{ caso.gravedad.replace('_', ' ') | upper }}
                     </span>
                 </td>
@@ -136,7 +131,6 @@
             </thead>
             <tbody>
                 {% for item in caso.estudiantes %}
-                {# Resaltamos la fila si es el estudiante consultado #}
                 <tr class="{{ 'highlight' if item.id_estudiante == id_estudiante else '' }}">
                     <td><strong>{{ item.rol.replace('_', ' ') | title }}</strong></td>
                     <td>{{ item.estudiante.id_estudiante }}</td>
@@ -147,7 +141,64 @@
             </tbody>
         </table>
 
-        <h3>Bitácora de Hitos Asociados al Caso</h3>
+        <h3>Incidentes Específicos Registrados</h3>
+        <table class="datos">
+            <thead>
+                <tr>
+                    <th style="width: 10%;">Fecha</th>
+                    <th style="width: 10%;">Gravedad</th>
+                    <th style="width: 15%;">Categoría</th>
+                    <th style="width: 32%;">Descripción / Evidencias</th>
+                    <th style="width: 15%;">Reportado Por</th>
+                    <th style="width: 18%;">Estudiantes Implicados</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if caso.incidentes|length > 0 %}
+                    {% for incidente in caso.incidentes | sort(attribute='fecha') %}
+                    <tr>
+                        <td>{{ incidente.fecha }}</td>
+                        <td>
+                            <span class="badge">
+                                {{ incidente.gravedad.replace('_', ' ') | upper }}
+                            </span>
+                        </td>
+                        <td>{{ incidente.categoria.replace('_', ' ') | title }}</td>
+                        <td>
+                            {{ incidente.desc }}
+                            {% if incidente.documentos|length > 0 %}
+                                <br><br><strong>Evidencias Adjuntas:</strong>
+                                <ul class="lista-interna">
+                                    {% for doc in incidente.documentos %}
+                                        <li>{{ doc.nombre_original }} ({{ (doc.size_bytes / 1024 / 1024) | round(2) }} MB) - {{ doc.descripcion if doc.descripcion else '' }}</li>
+                                    {% endfor %}
+                                </ul>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {{ incidente.productor.nombre }}<br>
+                            <small style="color: #7f8c8d;">({{ incidente.productor.tipo_usuario.replace('_', ' ') | title }})</small>
+                        </td>
+                        <td>
+                            <ul class="lista-interna">
+                                {% for est_inc in incidente.estudiantes %}
+                                <li style="{{ 'font-weight: bold; color: #b03a2e;' if est_inc.id_estudiante == id_estudiante else '' }}">
+                                    {{ est_inc.estudiante.nombre }} <br>
+                                    <small style="color: #7f8c8d;">Rol: {{ est_inc.rol.replace('_', ' ') | title }}</small>
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="6" style="text-align: center; color: #7f8c8d;">No hay incidentes específicos registrados para este caso.</td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+        <h3>Hitos Asociados al Caso</h3>
         <table class="datos">
             <thead>
                 <tr>
@@ -164,17 +215,17 @@
                     <td>{{ hito.fecha }}</td>
                     <td>
                         {% if hito.tipo == 'tramite' %}
-                            <span class="badge badge-tramite">TRÁMITE</span>
+                            <span class="badge">TRÁMITE</span>
                         {% else %}
-                            <span class="badge badge-medida">MEDIDA</span>
+                            <span class="badge">MEDIDA</span>
                         {% endif %}
                     </td>
                     <td>
                         {% if hito.tipo == 'tramite' %}
-                            {{ hito.categoria_tramite.replace('_', ' ') | title }}<br>
-                            <small style="color: #7f8c8d;">{{ hito.subtipo_tramite.replace('_', ' ') | title }}</small>
+                            {{ hito.categoria_tramite.replace('_', ' ') | title if hito.categoria_tramite else '' }}<br>
+                            <small style="color: #7f8c8d;">{{ hito.subtipo_tramite.replace('_', ' ') | title if hito.subtipo_tramite else '' }}</small>
                         {% else %}
-                            Nivel: <strong>{{ hito.nivel_medida.replace('_', ' ') | title }}</strong>
+                            Nivel: <strong>{{ hito.nivel_medida.replace('_', ' ') | title if hito.nivel_medida else 'N/A' }}</strong>
                         {% endif %}
                     </td>
                     <td>
@@ -191,10 +242,9 @@
                     <td>
                         <ul class="lista-interna">
                             {% for est in hito.estudiantes %}
-                                {# Negrita si el estudiante principal está en el hito #}
-                                <li style="{{ 'font-weight: bold; color: #b03a2e;' if est.id_estudiante == id_estudiante else '' }}">
-                                    {{ est.nombre }}
-                                </li>
+                            <li style="{{ 'font-weight: bold; color: #b03a2e;' if est.id_estudiante == id_estudiante else '' }}">
+                                {{ est.nombre }}
+                            </li>
                             {% endfor %}
                         </ul>
                     </td>

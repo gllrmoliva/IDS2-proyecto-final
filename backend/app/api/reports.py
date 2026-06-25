@@ -7,8 +7,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Annotated
 
 from app.crud.cases import (
-        get_cases_for_user,
-        get_caso_by_id
+        get_cases_for_user_report,
+        get_caso_by_id_report
 )
 
 
@@ -25,13 +25,15 @@ async def create_report_case(
             ],
         db: AsyncSession = Depends(get_db)):
 
-    datos = await get_caso_by_id(db=db, id_caso=id_caso, user = current_user)
+    datos = await get_caso_by_id_report(db=db, id_caso=id_caso, user = current_user)
 
     template = env.get_template("reporte_caso.html")
+
     html_renderizado = template.render(caso=datos)
     
     pdf_bytes = HTML(string=html_renderizado).write_pdf()
     
+
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
@@ -49,7 +51,7 @@ async def create_report_student(
 
 
     try:
-        cases = await get_cases_for_user(db=db,
+        cases = await get_cases_for_user_report(db=db,
                               user=current_user,
                               id_estudiante=id_estudiante)
     except Exception as e:
@@ -59,9 +61,11 @@ async def create_report_student(
                 )
 
     template = env.get_template("reporte_estudiante.html")
-    html_renderizado = template.render(casos=cases,
-                                       id_estudiante=id_estudiante)
-    
+    html_renderizado = template.render(
+            datos_alumno=cases,
+            id_estudiante=id_estudiante
+            )
+
     pdf_bytes = HTML(string=html_renderizado).write_pdf()
     
     return Response(
@@ -69,5 +73,4 @@ async def create_report_student(
         media_type="application/pdf",
         headers={"Content-Disposition": "inline; filename=reporte_estudiante.pdf"}
     )
-    #return cases
 

@@ -22,28 +22,37 @@ export function StudentProfileView() {
   }, [id, fetchStudentProfile]);
 
   // Lógica de descarga de reporte de estudiante
-  const handleGenerarReporte = async () => {
-    setGenerandoReporte(true);
-    try {
-      const token = localStorage.getItem("access_token");
-      const res = await fetch(`/api/reports/student/${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error(`El servicio de reportes aún no está disponible (${res.status}).`);
-      
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `reporte_estudiante_${id}.pdf`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch (e) {
-      alert(`No se pudo generar el reporte: ${e.message}`);
-    } finally {
-      setGenerandoReporte(false);
-    }
-  };
+    const handleGenerarReporte = async () => {
+        setGenerandoReporte(true);
+        try {
+            const token = localStorage.getItem("access_token");
+            const res = await fetch(`/api/reports/student/${id}`, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+
+            // Manejo de errores con opción de leer el detalle del backend
+            if (!res.ok) {
+                const errorData = await res.json().catch(() => ({}));
+                throw new Error(errorData.detail || `El servicio de reportes aún no está disponible (${res.status}).`);
+            }
+
+            const data = await res.blob();
+
+            const pdfBlob = new Blob([data], { type: 'application/pdf' });
+            const url = URL.createObjectURL(pdfBlob);
+
+            window.open(url, '_blank');
+
+            setTimeout(() => {
+                URL.revokeObjectURL(url);
+            }, 10000);
+
+        } catch (e) {
+            alert(`No se pudo generar el reporte: ${e.message}`);
+        } finally {
+            setGenerandoReporte(false);
+        }
+    };
 
   const studentIncidents = incidents.filter(inc => 
     inc.alumno.rut === id || inc.involucrados?.some(inv => inv.rut === id)

@@ -4,7 +4,7 @@ from fastapi import UploadFile
 from typing import List
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import selectinload, with_loader_criteria
 
 from app.database.models import (
     Incidente,
@@ -17,7 +17,8 @@ from app.database.models import (
     EstudianteCaso,
     EstudianteIncidente,
     Documento,
-    TipoHito
+    TipoHito,
+    Usuario
 )
 
 from app.schemas.cases import (
@@ -94,6 +95,65 @@ async def get_cases_for_user(db: AsyncSession, user, id_estudiante: Optional[str
     result = await db.execute(stmt)
 
     return result.scalars().unique().all()
+
+
+async def get_cases_for_user_report(db: AsyncSession, user, id_estudiante: Optional[str] = None):
+    # Eager loading y Criterios de Carga
+    stmt = select(Caso).options(
+        # 1. Cargar estudiantes del Caso
+        selectinload(Caso.estudiantes)
+        .selectinload(EstudianteCaso.estudiante)
+        .selectinload(Estudiante.curso),
+        
+        # hitos del Caso, documentos y estudiantes
+        selectinload(Caso.hitos).options(
+            selectinload(Hito.documentos),
+            selectinload(Hito.estudiantes)
+        ),
+        
+        # incidentes del Caso y sus relaciones
+        selectinload(Caso.incidentes).options(
+            selectinload(Incidente.documentos),
+            selectinload(Incidente.productor),
+            selectinload(Incidente.estudiantes)
+            .selectinload(EstudianteIncidente.estudiante)
+            .selectinload(Estudiante.curso)
+        ),
+        
+        with_loader_criteria(Hito, Hito.es_activo == True),
+        with_loader_criteria(Incidente, Incidente.es_activo == True)
+    )
+
+    stmt = stmt.where(Caso.es_activo == True)
+
+    if id_estudiante:
+        stmt = stmt.where(Caso.estudiantes.any(EstudianteCaso.id_estudiante == id_estudiante))
+
+    if user.tipo_usuario == "coordinador":
+        pass
+    elif user.tipo_usuario == "profesor_jefe":
+        stmt = stmt.join(Caso.estudiantes).join(EstudianteCaso.estudiante).join(Estudiante.curso)
+        stmt = stmt.where(Curso.id_pj == user.id_usuario)
+
+    result = await db.execute(stmt)
+    casos_orm = result.scalars().unique().all()
+
+    nombre_alumno = "Sin nombre registrado"
+    curso_alumno = "Sin curso registrado"
+    if casos_orm:
+        for rel in casos_orm[0].estudiantes:
+            if rel.estudiante.id_estudiante == id_estudiante:
+                nombre_alumno = rel.estudiante.nombre
+                curso_alumno = rel.estudiante.nombre_curso
+                break
+
+    # Retornamos el diccionario simple y dejamos que Pydantic haga la magia
+    return {
+        "nombre_alumno": nombre_alumno,
+        "rut_alumno": id_estudiante,
+        "curso_alumno": curso_alumno,
+        "casos": casos_orm
+    }
 
 
 async def create_incidente_completo(
@@ -590,6 +650,7 @@ async def create_hito_completo(
     hito_completo = result_reload.scalar_one()
     return hito_completo
 
+
 async def get_caso_by_id(
     db: AsyncSession, id_caso: int, user) -> Caso:
     stmt = select(Caso).options(
@@ -634,5 +695,68 @@ async def get_caso_by_id(
 
     if not caso:
         raise EntityNotFoundError(f"Caso con ID {id_caso} no encontrado.")
+
+    return caso
+
+
+async def get_caso_by_id_report(db: AsyncSession, id_caso: int, user) -> Caso:
+    stmt = select(Caso).options(
+        
+        # Estudiantes del caso con su curso
+        selectinload(Caso.estudiantes)
+            .selectinload(EstudianteCaso.estudiante)
+            .selectinload(Estudiante.curso),
+
+        # Hitos con sus documentos y estudiantes vinculados
+        selectinload(Caso.hitos).options(
+            selectinload(Hito.documentos),
+            selectinload(Hito.estudiantes)
+        ),
+
+        # Incidentes del caso con productor, documentos y estudiantes
+        selectinload(Caso.incidentes).options(
+            selectinload(Incidente.productor),
+            selectinload(Incidente.documentos),
+            selectinload(Incidente.estudiantes)
+                .selectinload(EstudianteIncidente.estudiante)
+                .selectinload(Estudiante.curso)
+        ),
+        
+        with_loader_criteria(Hito, Hito.es_activo == True),
+        with_loader_criteria(Incidente, Incidente.es_activo == True),
+        with_loader_criteria(Usuario, Usuario.es_activo == True)
+        
+    ).where(
+        # El caso principal también debe estar activo
+        Caso.id_caso == id_caso,
+        Caso.es_activo == True
+    )
+
+    # Restricciones por rol
+    if user.tipo_usuario == "profesor_jefe":
+        stmt = stmt.where(
+            Caso.estudiantes.any(
+                EstudianteCaso.estudiante.has(
+                    Estudiante.curso.has(Curso.id_pj == user.id_usuario)
+                )
+            )
+        )
+    elif user.tipo_usuario == "productor":
+        # Aseguramos que el Productor tenga acceso si creó al menos un incidente ACTIVO
+        # Al tener acceso al caso, el selectinload superior ya se encarga de traer 
+        # TODOS los incidentes (que estén activos) de este caso.
+        stmt = stmt.where(
+            Caso.incidentes.any(
+                (Incidente.id_productor == user.id_usuario) & 
+                (Incidente.es_activo == True)
+            )
+        )
+
+    result = await db.execute(stmt)
+    caso = result.scalars().unique().one_or_none()
+
+    if not caso:
+        # Actualizamos el mensaje para reflejar que podría estar inactivo
+        raise EntityNotFoundError(f"Caso con ID {id_caso} no encontrado o se encuentra inactivo.")
 
     return caso
