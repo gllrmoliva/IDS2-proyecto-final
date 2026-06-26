@@ -480,8 +480,8 @@ export function CaseDetailView() {
                 </Link>
               </>
             )}
-            {/* Boton de reporte — solo coordinador (el backend restringe /reports a coordinador) */}
-            {rol === "coordinador" && (
+            {/*boton de reporte para coordinador y profesor jefe */}
+            {(rol === "coordinador" || rol === "profesor_jefe") && (
               <button
                 onClick={handleGenerarReporte}
                 disabled={generandoReporte}

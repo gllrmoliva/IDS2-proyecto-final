@@ -88,8 +88,8 @@ export function StudentProfileView() {
             <h2 className="text-3xl font-bold text-blue-900 font-serif">{estudiante.nombre}</h2>
             <p className="text-gray-500 font-medium mt-1">RUT: {estudiante.rut} | {estudiante.curso}</p>
           </div>
-          {/* Generar reporte solo coordinador */}
-          {rol === "coordinador" && (
+          {/* Generar reporte coordinador y profesor jefe */}
+          {(rol === "coordinador" || rol === "profesor_jefe") &&(
             <button
               onClick={handleGenerarReporte}
               disabled={generandoReporte}
